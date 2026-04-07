@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
+const apiKey = process.env.ANTHROPIC_API_KEY || "";
+console.log("API key starts with:", apiKey.substring(0, 10), "length:", apiKey.length);
+
+const client = new Anthropic({ apiKey });
 
 const TOOL_PROMPTS: Record<string, string> = {
   "food-safety": `You are a food safety analyst. The user will provide a product name, ingredient list, or UPC code.
