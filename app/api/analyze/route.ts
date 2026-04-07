@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
 
-const apiKey = process.env.MY_API_KEY || "";
+const apiKey = "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";
 console.log("API key starts with:", apiKey.substring(0, 10), "length:", apiKey.length);
-
 const client = new Anthropic({ apiKey });
 
 const TOOL_PROMPTS: Record<string, string> = {
