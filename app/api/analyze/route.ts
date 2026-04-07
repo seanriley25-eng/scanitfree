@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const API_KEY = process.env.ANTHROPIC_API_KEY || "";console.log("FULL KEY DEBUG:", JSON.stringify(API_KEY));
 
 const TOOL_PROMPTS: Record<string, string> = {
   "food-safety": `You are a food safety analyst. The user will provide a product name, ingredient list, or UPC code. Analyze it and respond with ONLY valid JSON (no markdown, no backticks): {"score": <number 0-100>, "grade": "<A/B/C/D/F>", "flags": [{"severity": "danger|warning|info", "text": "<specific concern>"}], "summary": "<2-3 sentence summary>"}. Be specific and cite real data when possible.`,
