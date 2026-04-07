@@ -1,0 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+  --bg: #0e0e10;
+  --surface: #17171b;
+  --border: #27272e;
+  --text: #e8e8ec;
+  --muted: #8b8b96;
+  --accent: #3b82f6;
+  --accent-dim: rgba(59,130,246,0.1);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.4s ease forwards;
+}
