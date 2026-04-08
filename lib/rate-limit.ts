@@ -12,8 +12,9 @@ export function rateLimit(ip: string): {
 } {
   const now = Date.now();
   if (Math.random() < 0.01) {
-    for (const [key, val] of requests) {
+    requests.forEach((val, key) => {
       if (now > val.resetAt) requests.delete(key);
+    });
     }
   }
   const entry = requests.get(ip);
