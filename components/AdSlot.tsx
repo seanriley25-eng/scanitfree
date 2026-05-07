@@ -2,10 +2,10 @@
 
 type AdSize = "leaderboard" | "rectangle" | "banner";
 
-const SIZES: Record<AdSize, string> = {
-  leaderboard: "728×90 LEADERBOARD",
-  rectangle: "300×250 MEDIUM RECTANGLE",
-  banner: "320×100 MOBILE BANNER",
+const DIMENSIONS: Record<AdSize, { minHeight: string; maxWidth: string }> = {
+  leaderboard: { minHeight: "90px", maxWidth: "728px" },
+  rectangle: { minHeight: "250px", maxWidth: "300px" },
+  banner: { minHeight: "100px", maxWidth: "320px" },
 };
 
 export function AdSlot({
@@ -15,15 +15,20 @@ export function AdSlot({
   size?: AdSize;
   className?: string;
 }) {
-  // In production, replace this div with actual AdSense code:
-  // <ins className="adsbygoogle" data-ad-client="ca-pub-XXX" data-ad-slot="XXX" .../>
-  // <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
+  const dims = DIMENSIONS[size];
 
   return (
     <div
-      className={`bg-surface border border-dashed border-border rounded-lg py-3.5 text-center text-muted text-xs font-mono tracking-wider ${className}`}
+      className={`ad-slot ad-slot-${size} ${className}`}
+      aria-hidden="true"
+      style={{
+        minHeight: dims.minHeight,
+        width: "100%",
+        maxWidth: dims.maxWidth,
+        margin: "0 auto",
+      }}
     >
-      ADVERTISEMENT — {SIZES[size]}
+      {/* AdSense slot — populated post-approval */}
     </div>
   );
 }

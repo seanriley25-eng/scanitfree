@@ -4,18 +4,6 @@ import { useState } from "react";
 import Link from "next/link";
 import type { Tool } from "@/lib/tools";
 
-const STATUS_COLORS = {
-  live: { bg: "bg-green-400", text: "text-green-950" },
-  coming: { bg: "bg-yellow-300", text: "text-yellow-950" },
-  planned: { bg: "bg-gray-400", text: "text-gray-900" },
-};
-
-const STATUS_LABELS = {
-  live: "Live",
-  coming: "Coming Soon",
-  planned: "Planned",
-};
-
 export function ToolGrid({
   tools,
   categories,
@@ -48,24 +36,13 @@ export function ToolGrid({
 
       {/* Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((tool) => {
-          const colors = STATUS_COLORS[tool.status];
-          const isLive = tool.status === "live";
-
-          const Card = (
-            <div
-              className={`bg-surface border border-border rounded-xl p-6 transition-all ${
-                isLive
-                  ? "hover:border-accent hover:-translate-y-0.5 cursor-pointer"
-                  : ""
-              } ${tool.status === "planned" ? "opacity-50" : ""}`}
-            >
+        {filtered.map((tool) => (
+          <Link key={tool.id} href={tool.href} className="no-underline">
+            <div className="bg-surface border border-border rounded-xl p-6 transition-all hover:border-accent hover:-translate-y-0.5 cursor-pointer">
               <div className="flex justify-between items-start">
                 <span className="text-3xl">{tool.icon}</span>
-                <span
-                  className={`${colors.bg} ${colors.text} text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full uppercase tracking-wide`}
-                >
-                  {STATUS_LABELS[tool.status]}
+                <span className="bg-green-400 text-green-950 text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full uppercase tracking-wide">
+                  Live
                 </span>
               </div>
               <h3 className="font-heading text-base font-semibold text-[var(--text)] mt-3 mb-1.5">
@@ -78,23 +55,13 @@ export function ToolGrid({
                 <span className="text-[11px] text-muted font-mono opacity-60">
                   ~{tool.searchVolume} searches
                 </span>
-                {isLive && (
-                  <span className="text-xs text-accent font-mono font-semibold">
-                    {tool.cta} →
-                  </span>
-                )}
+                <span className="text-xs text-accent font-mono font-semibold">
+                  {tool.cta} →
+                </span>
               </div>
             </div>
-          );
-
-          return isLive ? (
-            <Link key={tool.id} href={tool.href} className="no-underline">
-              {Card}
-            </Link>
-          ) : (
-            <div key={tool.id}>{Card}</div>
-          );
-        })}
+          </Link>
+        ))}
       </div>
     </div>
   );

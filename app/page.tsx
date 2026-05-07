@@ -30,7 +30,7 @@ export default function Home() {
       </div>
 
       {/* Tool grid (client component for filtering) */}
-      <ToolGrid tools={TOOLS} categories={CATEGORIES} />
+      <ToolGrid tools={TOOLS.filter(t => t.status === 'live')} categories={CATEGORIES} />
 
       {/* Mid ad */}
       <div className="max-w-[900px] mx-auto px-6 mt-8">

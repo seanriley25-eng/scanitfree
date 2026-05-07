@@ -10,9 +10,6 @@ export function Nav() {
         <span className="font-heading font-bold text-base text-[var(--text)]">
           ScanItFree
         </span>
-        <span className="font-mono text-[10px] text-accent bg-accent-dim px-2 py-0.5 rounded-lg">
-          BETA
-        </span>
       </Link>
       <div className="flex gap-5 items-center">
         <Link

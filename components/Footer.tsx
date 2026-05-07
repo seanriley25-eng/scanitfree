@@ -1,3 +1,5 @@
+"use client";
+
 import Link from "next/link";
 
 export function Footer() {
@@ -13,6 +15,13 @@ export function Footer() {
         <Link href="/privacy" className="text-muted hover:text-[var(--text)] no-underline">Privacy Policy</Link>
         <Link href="/terms" className="text-muted hover:text-[var(--text)] no-underline">Terms</Link>
         <Link href="/contact" className="text-muted hover:text-[var(--text)] no-underline">Contact</Link>
+        <button
+          type="button"
+          onClick={() => window.dispatchEvent(new Event('open-cookie-banner'))}
+          className="text-muted hover:text-[var(--text)] no-underline underline-offset-2"
+        >
+          Cookie Preferences
+        </button>
       </div>
     </footer>
   );
