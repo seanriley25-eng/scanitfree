@@ -1,0 +1,11 @@
+# scanitfree.com — Authorized Digital Sellers (ads.txt)
+# https://iabtechlab.com/ads-txt/
+#
+# This file will be populated with authorized seller information
+# after Google AdSense approval. After approval, AdSense will
+# instruct you to add a line in this format:
+#
+# google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+#
+# Additional ad networks (Media.net, Amazon, etc.) will add their
+# own authorization lines after their respective approvals.
