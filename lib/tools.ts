@@ -122,4 +122,4 @@ export const TOOLS: Tool[] = [
   },
 ];
 
-export const CATEGORIES = ["All", "Health", "Career", "Legal", "Safety", "Productivity"];
+export const CATEGORIES = ["All", "Health", "Career", "Legal"];
