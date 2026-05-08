@@ -19,6 +19,12 @@ export function Nav() {
           All Tools
         </Link>
         <Link
+          href="/blog"
+          className="text-muted text-sm font-mono no-underline hover:text-[var(--text)] transition-colors"
+        >
+          Blog
+        </Link>
+        <Link
           href="/about"
           className="text-muted text-sm font-mono no-underline hover:text-[var(--text)] transition-colors"
         >
