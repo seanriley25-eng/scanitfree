@@ -10,6 +10,14 @@ interface Section {
   feedback: string;
 }
 
+interface KeywordGap {
+  inferredRole?: string;
+  missingKeywords: string[];
+  strongOverlaps: string[];
+  toneAlignment: string;
+  rewriteHints: string[];
+}
+
 interface Result {
   score: number;
   grade: string;
@@ -17,6 +25,7 @@ interface Result {
   atsScore: number;
   topIssues: string[];
   summary: string;
+  keywordGap?: KeywordGap;
 }
 
 const GRADE_COLORS: Record<string, string> = {
@@ -24,9 +33,11 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 const CHAR_LIMIT = 24000;
+const JD_CHAR_LIMIT = 8000;
 
 export function ResumeClient() {
   const [input, setInput] = useState("");
+  const [jd, setJd] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
@@ -40,7 +51,7 @@ export function ResumeClient() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: "resume-reviewer", input }),
+        body: JSON.stringify({ tool: "resume-reviewer", input, jd: jd.trim() || undefined }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -64,11 +75,13 @@ export function ResumeClient() {
       </div>
       <p className="text-muted text-sm leading-relaxed mb-7">
         Paste your resume text below. Our AI evaluates formatting, impact, ATS compatibility,
-        and overall positioning — then gives you specific, actionable feedback.
+        and overall positioning — then gives you specific, actionable feedback. Add a job description
+        for targeted keyword matching against that specific role.
       </p>
 
       <AdSlot size="leaderboard" className="mb-6" />
 
+      {/* Resume textarea */}
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
@@ -90,16 +103,43 @@ export function ResumeClient() {
         </div>
       )}
 
+      {/* Optional JD textarea */}
+      <div className="mt-5">
+        <label className="block font-heading text-sm font-semibold text-[var(--text)] mb-1">
+          Paste a job description <span className="text-muted font-normal">(optional)</span> — get tailored feedback against this role
+        </label>
+        <p className="text-muted text-xs mb-2">
+          Leave blank for general feedback. Paste a JD for ATS keyword matching against that specific role.
+        </p>
+        <textarea
+          value={jd}
+          onChange={(e) => setJd(e.target.value)}
+          placeholder="Paste the full job description here..."
+          rows={6}
+          className="w-full bg-surface border border-border rounded-xl p-4 text-[var(--text)] font-mono text-sm resize-y outline-none focus:border-accent transition-colors"
+        />
+        <div className="flex items-center justify-between mt-2 mb-1">
+          <span className={`text-xs font-mono ${jd.length > JD_CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
+            {jd.length.toLocaleString()} / {JD_CHAR_LIMIT.toLocaleString()} chars
+          </span>
+        </div>
+        {jd.length > JD_CHAR_LIMIT && (
+          <div className="mb-2 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-sm">
+            ⚠️ Job description is too long — only the first {JD_CHAR_LIMIT.toLocaleString()} characters will be used.
+          </div>
+        )}
+      </div>
+
       <button
         onClick={analyze}
         disabled={loading || !input.trim()}
-        className={`mt-1 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
+        className={`mt-4 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
           loading || !input.trim()
             ? "bg-border text-muted cursor-not-allowed"
             : "bg-accent text-white hover:brightness-110 cursor-pointer"
         }`}
       >
-        {loading ? "Reviewing..." : "Review My Resume"}
+        {loading ? "Reviewing..." : jd.trim() ? "Review Against This JD" : "Review My Resume"}
       </button>
 
       <p className="mt-2 text-muted text-xs">🔒 Your input is processed and discarded — we never store your data.</p>
@@ -160,6 +200,66 @@ export function ResumeClient() {
             </div>
           )}
 
+          {/* Keyword gap / JD match section */}
+          {result.keywordGap && (
+            <div className="mt-5 pt-5 border-t border-border">
+              <h4 className="font-heading text-sm font-semibold text-[var(--text)] mb-1">
+                {result.keywordGap.inferredRole
+                  ? `Missing Keywords for ${result.keywordGap.inferredRole} Roles`
+                  : "Match Against This Role"}
+              </h4>
+
+              {result.keywordGap.inferredRole && (
+                <p className="text-muted text-xs mb-3 italic">
+                  💡 We inferred you&apos;re targeting <strong className="text-[var(--text)]">{result.keywordGap.inferredRole}</strong> roles.
+                  Paste a specific JD above for more targeted keyword matching.
+                </p>
+              )}
+
+              {result.keywordGap.missingKeywords?.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-mono text-muted mb-1.5">Missing keywords:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {result.keywordGap.missingKeywords.map((kw, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-mono">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {result.keywordGap.strongOverlaps?.length > 0 && (
+                <div className="mb-3">
+                  <p className="text-xs font-mono text-muted mb-1.5">Strong matches:</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {result.keywordGap.strongOverlaps.map((kw, i) => (
+                      <span key={i} className="px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-mono">
+                        {kw}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {result.keywordGap.toneAlignment && (
+                <p className="text-muted text-sm leading-relaxed mb-3">{result.keywordGap.toneAlignment}</p>
+              )}
+
+              {result.keywordGap.rewriteHints?.length > 0 && (
+                <div>
+                  <p className="text-xs font-mono text-muted mb-1.5">Bullet rewrite opportunities (diagnosis only):</p>
+                  {result.keywordGap.rewriteHints.map((hint, i) => (
+                    <div key={i} className="flex items-start gap-2 p-2.5 mb-1.5 rounded-lg bg-accent/5 border-l-[3px] border-l-accent">
+                      <span className="text-sm">🎯</span>
+                      <span className="text-[var(--text)] text-sm leading-relaxed">{hint}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <p className="text-muted text-sm leading-relaxed mt-4">{result.summary}</p>
           <AdSlot size="rectangle" className="mt-5" />
         </div>
@@ -172,8 +272,9 @@ export function ResumeClient() {
           Our AI resume reviewer evaluates your resume against current hiring standards used
           by recruiters and applicant tracking systems (ATS). It scores your resume across
           multiple dimensions including formatting clarity, quantified achievements, keyword
-          optimization, and overall narrative strength. Each section receives individual
-          feedback so you know exactly what to improve.
+          optimization, and overall narrative strength. Paste a job description to unlock
+          ATS keyword match analysis — see exactly which keywords the role requires that
+          your resume is missing, and which ones you already nail.
         </p>
         <p className="text-muted text-xs leading-relaxed italic">
           Disclaimer: This tool provides general resume feedback and is not a substitute for
