@@ -31,14 +31,31 @@ const GRADE_COLORS: Record<string, string> = {
 
 const CHAR_LIMIT = 24000;
 
+const US_STATES = [
+  "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
+  "Connecticut", "Delaware", "Florida", "Georgia", "Hawaii", "Idaho",
+  "Illinois", "Indiana", "Iowa", "Kansas", "Kentucky", "Louisiana",
+  "Maine", "Maryland", "Massachusetts", "Michigan", "Minnesota",
+  "Mississippi", "Missouri", "Montana", "Nebraska", "Nevada",
+  "New Hampshire", "New Jersey", "New Mexico", "New York",
+  "North Carolina", "North Dakota", "Ohio", "Oklahoma", "Oregon",
+  "Pennsylvania", "Rhode Island", "South Carolina", "South Dakota",
+  "Tennessee", "Texas", "Utah", "Vermont", "Virginia", "Washington",
+  "West Virginia", "Wisconsin", "Wyoming", "District of Columbia",
+  "Other / I don't know",
+];
+
 export function LeaseClient() {
   const [input, setInput] = useState("");
+  const [state, setState] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
 
+  const canSubmit = !loading && !!input.trim() && !!state;
+
   const analyze = async () => {
-    if (!input.trim()) return;
+    if (!canSubmit) return;
     setLoading(true);
     setError("");
     setResult(null);
@@ -46,7 +63,7 @@ export function LeaseClient() {
       const res = await fetch("/api/analyze", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: "lease-scanner", input }),
+        body: JSON.stringify({ tool: "lease-scanner", input, state }),
       });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -70,11 +87,34 @@ export function LeaseClient() {
       </div>
       <p className="text-muted text-sm leading-relaxed mb-7">
         Paste your lease or rental agreement below. Our AI identifies unfair clauses,
-        hidden fees, missing protections, and anything you should negotiate — explained in plain English.
+        hidden fees, missing protections, and anything you should negotiate — explained
+        in plain English with state-specific tenant law references.
       </p>
 
       <AdSlot size="leaderboard" className="mb-6" />
 
+      {/* State selector — required */}
+      <div className="mb-5">
+        <label htmlFor="state-select" className="block font-heading text-sm font-semibold text-[var(--text)] mb-1">
+          Which state is this lease for? <span className="text-red-400">*</span>
+        </label>
+        <select
+          id="state-select"
+          value={state}
+          onChange={(e) => setState(e.target.value)}
+          className="w-full bg-surface border border-border rounded-xl px-4 py-3 text-sm text-[var(--text)] outline-none focus:border-accent transition-colors appearance-none cursor-pointer"
+        >
+          <option value="" disabled>Select a state…</option>
+          {US_STATES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        {!state && (
+          <p className="mt-1 text-muted text-xs">State is required — tenant law varies significantly by jurisdiction.</p>
+        )}
+      </div>
+
+      {/* Lease textarea */}
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
@@ -98,9 +138,9 @@ export function LeaseClient() {
 
       <button
         onClick={analyze}
-        disabled={loading || !input.trim()}
+        disabled={!canSubmit}
         className={`mt-1 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
-          loading || !input.trim()
+          !canSubmit
             ? "bg-border text-muted cursor-not-allowed"
             : "bg-accent text-white hover:brightness-110 cursor-pointer"
         }`}
@@ -123,7 +163,7 @@ export function LeaseClient() {
             </div>
             <div>
               <h3 className="font-heading text-lg text-[var(--text)]">Fairness Score: {result.score}/100</h3>
-              <p className="text-muted text-xs mt-1">{result.flags.length} issues found</p>
+              <p className="text-muted text-xs mt-1">{result.flags.length} issues found · {state} law applied</p>
             </div>
           </div>
 
@@ -166,11 +206,11 @@ export function LeaseClient() {
       <section className="mt-14 border-t border-border pt-10">
         <h2 className="font-display text-2xl text-[var(--text)] mb-3">How the Lease Scanner works</h2>
         <p className="text-muted text-sm leading-relaxed mb-4">
-          Our AI analyzes your lease text against common tenant protection standards
-          and flags clauses that may be unfair, unusual, or potentially unenforceable.
-          It checks for excessive fees, unreasonable entry provisions, shifted maintenance
-          responsibilities, waived tenant rights, and missing standard protections like
-          proper notice periods and security deposit terms.
+          Our AI analyzes your lease text against both common tenant protection standards
+          and the specific laws of your state. Select your state to get jurisdiction-aware
+          analysis — whether that&apos;s California&apos;s deposit caps, New York&apos;s entry notice
+          requirements, New Jersey&apos;s deposit interest rules, or Texas&apos;s return deadlines.
+          Each red flag is cited to the applicable statute so you can verify it yourself.
         </p>
         <p className="text-muted text-xs leading-relaxed italic">
           Disclaimer: This tool provides informational guidance only and is not legal advice.

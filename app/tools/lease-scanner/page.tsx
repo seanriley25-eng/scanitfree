@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { LeaseClient } from "./client";
 
 export const metadata: Metadata = {
-  title: "Free AI Lease Scanner — Find Red Flags in Your Rental Agreement",
+  title: "Free AI Lease Scanner — State-Specific Red Flag Analysis",
   description:
-    "Paste your lease or rental agreement and our AI identifies unfair clauses, hidden fees, and red flags in plain English. Free, no signup.",
-  keywords: ["lease scanner", "rental agreement checker", "lease red flags", "unfair lease clauses"],
+    "Paste your lease and select your state for jurisdiction-aware AI analysis. Identifies unfair clauses, hidden fees, and red flags with specific state tenant law citations. Free, no signup.",
+  keywords: ["lease scanner", "state lease review", "rental agreement checker", "tenant rights by state", "lease red flags", "state-specific lease analysis"],
 };
 
 export default function LeaseScannerPage() {
