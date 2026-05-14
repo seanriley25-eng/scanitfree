@@ -29,6 +29,8 @@ const GRADE_COLORS: Record<string, string> = {
   A: "bg-green-600", B: "bg-yellow-600", C: "bg-orange-600", D: "bg-red-600", F: "bg-red-800",
 };
 
+const CHAR_LIMIT = 24000;
+
 export function LeaseClient() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -80,10 +82,24 @@ export function LeaseClient() {
         rows={12}
         className="w-full bg-surface border border-border rounded-xl p-4 text-[var(--text)] font-mono text-sm resize-y outline-none focus:border-accent transition-colors"
       />
+
+      <div className="flex items-center justify-between mt-2 mb-1">
+        <span className={`text-xs font-mono ${input.length > CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
+          {input.length.toLocaleString()} / {CHAR_LIMIT.toLocaleString()} chars
+        </span>
+      </div>
+
+      {input.length > CHAR_LIMIT && (
+        <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-sm">
+          ⚠️ Your lease is too long — only the first {CHAR_LIMIT.toLocaleString()} characters will be reviewed.
+          Consider splitting it into sections or reviewing the most critical clauses first.
+        </div>
+      )}
+
       <button
         onClick={analyze}
         disabled={loading || !input.trim()}
-        className={`mt-3 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
+        className={`mt-1 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
           loading || !input.trim()
             ? "bg-border text-muted cursor-not-allowed"
             : "bg-accent text-white hover:brightness-110 cursor-pointer"
@@ -91,6 +107,8 @@ export function LeaseClient() {
       >
         {loading ? "Scanning..." : "Scan for Red Flags"}
       </button>
+
+      <p className="mt-2 text-muted text-xs">🔒 Your input is processed and discarded — we never store your data.</p>
 
       {error && (
         <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{error}</div>
