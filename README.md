@@ -50,16 +50,18 @@ scanitfree/
 │   ├── api/
 │   │   └── analyze/route.ts  # Claude API endpoint — handles all tools
 │   └── tools/
-│       ├── food-safety/      # Food Safety Scanner
-│       ├── resume-reviewer/  # Resume Reviewer
-│       └── lease-scanner/    # Lease Red Flag Scanner
+│       ├── food-safety/           # Food Safety Scanner
+│       ├── resume-reviewer/       # Resume Reviewer
+│       ├── lease-scanner/         # Lease Red Flag Scanner
+│       └── cover-letter-reviewer/ # Cover Letter Reviewer
 ├── components/
 │   ├── Nav.tsx
 │   ├── Footer.tsx
 │   ├── AdSlot.tsx          # Placeholder → swap for real AdSense
 │   └── ToolGrid.tsx        # Filterable tool card grid
 ├── lib/
-│   └── tools.ts            # Central tool registry + SEO metadata
+│   ├── tools.ts            # Central tool registry + SEO metadata
+│   └── openfda.ts          # OpenFDA enforcement API client (food-safety)
 └── .env.example
 ```
 
