@@ -219,10 +219,16 @@ export function LeaseClient() {
         )}
       </div>
 
+      {!loading && !canSubmit && (
+        !state
+          ? <p className="mt-4 text-yellow-400 text-sm">⚠️ Select a state first to enable scanning.</p>
+          : !hasLeaseInput && <p className="mt-4 text-yellow-400 text-sm">⚠️ Paste lease text or upload a file to scan.</p>
+      )}
+
       <button
         onClick={analyze}
         disabled={!canSubmit}
-        className={`mt-4 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
+        className={`mt-3 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
           !canSubmit
             ? "bg-border text-muted cursor-not-allowed"
             : "bg-accent text-white hover:brightness-110 cursor-pointer"
