@@ -50,8 +50,15 @@ export default function RootLayout({
             });
           `}
         </Script>
-        {/* Google AdSense — replace with your publisher ID after approval */}
-        {/* <Script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossOrigin="anonymous" strategy="afterInteractive" /> */}
+        {/* Google AdSense */}
+        <Script
+          async
+          src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8082302563728806"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
+        <meta name="google-adsense-account" content="ca-pub-8082302563728806" />
+
       </head>
       <body className="min-h-screen">
         <Nav />
