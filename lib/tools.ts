@@ -70,6 +70,20 @@ export const TOOLS: Tool[] = [
       "Paste or upload your cover letter for instant AI feedback on opening hook, structure, tone, and ATS keyword gaps. Add a job description for targeted role-match analysis. Free, no signup required.",
   },
   {
+    id: "privacy-policy-translator",
+    name: "Privacy Policy Translator",
+    desc: "Paste any privacy policy or upload as PDF — plain-English breakdown of what they do with your data, red flags, and your rights",
+    icon: "🔓",
+    category: "Privacy",
+    status: "live",
+    searchVolume: "21.0K/mo",
+    cta: "Translate Policy",
+    href: "/tools/privacy-policy-translator",
+    seoTitle: "Free Privacy Policy Translator — Plain English in 30 Seconds",
+    seoDesc:
+      "Paste any privacy policy or upload as PDF. Get a plain-English breakdown of what they actually do with your data, red flags, data sharing, and your rights under GDPR and CCPA. Free, no signup.",
+  },
+  {
     id: "pet-symptom",
     name: "Pet Symptom Checker",
     desc: "Describe your pet's symptoms and get guidance on urgency and next steps",
@@ -123,4 +137,4 @@ export const TOOLS: Tool[] = [
   },
 ];
 
-export const CATEGORIES = ["All", "Health", "Career", "Legal"];
+export const CATEGORIES = ["All", "Health", "Career", "Legal", "Privacy"];
