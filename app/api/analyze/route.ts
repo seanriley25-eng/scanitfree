@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit } from "@/lib/rate-limit";
+import { getRelevantRecalls, formatRecallsBlock } from "@/lib/openfda";
 
 const API_KEY = process.env.ANTHROPIC_API_KEY || "";
 
@@ -16,7 +17,7 @@ const SUPPORTED_MIME_TYPES = new Set([
 ]);
 
 const TOOL_PROMPTS: Record<string, string> = {
-  "food-safety": `You are a food safety analyst. The user will provide a product name, ingredient list, UPC code, or an image/document of a food label. Analyze it and respond with ONLY valid JSON (no markdown, no backticks): {"score": <number 0-100>, "grade": "<A/B/C/D/F>", "flags": [{"severity": "danger|warning|info", "text": "<specific concern>"}], "summary": "<2-3 sentence summary>"}. Cross-reference your knowledge of: recent FDA enforcement actions and recalls, known allergens and labeling requirements, controversial additives (artificial colors, preservatives, etc.), nutritional concerns (excessive sodium, sugar, trans fats). Be specific. For each flag, append a source citation at the end of the text field ONLY when a real one applies — use real FDA recall numbers (e.g., "FDA Recall #F-1234-2024") or CFR regulation citations (e.g., "21 CFR 101.22"). Do NOT fabricate citations; skip the citation entirely if no real source can be cited. Score: 90-100=A (very safe), 70-89=B (minor concerns), 50-69=C (moderate concerns), 30-49=D (significant concerns), 0-29=F (serious safety issues).`,
+  "food-safety": `You are a food safety analyst. The user will provide a product name, ingredient list, UPC code, or an image/document of a food label. Analyze it and respond with ONLY valid JSON (no markdown, no backticks): {"score": <number 0-100>, "grade": "<A/B/C/D/F>", "flags": [{"severity": "danger|warning|info", "text": "<specific concern>"}], "summary": "<2-3 sentence summary>"}. Cross-reference your knowledge of: recent FDA enforcement actions and recalls, known allergens and labeling requirements, controversial additives (artificial colors, preservatives, etc.), nutritional concerns (excessive sodium, sugar, trans fats). Be specific. For each flag, append a source citation at the end of the text field ONLY when a real one applies — use real FDA recall numbers (e.g., "FDA Recall #F-1234-2024") or CFR regulation citations (e.g., "21 CFR 101.22"). Do NOT fabricate citations; skip the citation entirely if no real source can be cited. Score: 90-100=A (very safe), 70-89=B (minor concerns), 50-69=C (moderate concerns), 30-49=D (significant concerns), 0-29=F (serious safety issues). When an FDA_RECALLS block is present in the user message, treat it as live ground-truth data from the openFDA enforcement database — prioritize it over your training data. If the product matches a recall in the block, flag it as "danger" severity and cite the specific Recall # from the context. If recalls in the block are for related or similar products but not an exact match, include them as a separate "info" flag noting the related recent recalls. If no FDA_RECALLS block is provided, you may still reference historical recalls from your training data but treat them as "info" severity since they are not real-time verified.`,
   "resume-reviewer": `You are an expert resume reviewer. The user message contains a RESUME (text, PDF document, or image) and optionally a JOB DESCRIPTION section. Analyze and respond with ONLY valid JSON (no markdown, no backticks): {"score": <0-100>, "grade": "<A/B/C/D/F>", "sections": [{"name": "<section>", "score": <0-100>, "feedback": "<feedback>"}], "atsScore": <0-100>, "topIssues": ["<issue>"], "summary": "<2-3 sentences>", "keywordGap": {"inferredRole": "<string, only when no JD>", "missingKeywords": ["<keyword>"], "strongOverlaps": ["<keyword>"], "toneAlignment": "<1-2 sentences>", "rewriteHints": ["<hint>"]}}. Evaluate: formatting/readability, quantified achievements, ATS keyword optimization, section completeness, grammar/consistency, overall positioning. IF a JOB DESCRIPTION is present: perform a targeted ATS keyword match — missingKeywords: keywords the JD requires that the resume lacks; strongOverlaps: keywords well-matched in both; toneAlignment: assess seniority/tone fit; rewriteHints: 3-5 diagnostic observations about specific bullets (e.g. "Your AWS bullet lacks a quantified outcome; the JD emphasizes cost reduction") — observations only, do NOT write rewrites; omit inferredRole. IF no JOB DESCRIPTION: infer the likely target role from resume content — inferredRole: state that role; missingKeywords: 5-10 ATS-relevant keywords likely missing for that role; strongOverlaps: strong existing ATS keywords; toneAlignment: note that a JD would enable more targeted matching; rewriteHints: []. Where a well-known ATS standard directly supports feedback, you may append a brief citation. Do NOT fabricate citations.`,
   "lease-scanner": `You are a tenant rights expert with deep knowledge of landlord-tenant law across all 50 US states and DC. The user message begins with STATE/JURISDICTION followed by the lease text or document. Apply the laws of the stated jurisdiction and respond with ONLY valid JSON (no markdown, no backticks): {"score": <0-100>, "grade": "<A/B/C/D/F>", "flags": [{"severity": "danger|warning|info", "clause": "<clause>", "explanation": "<explanation>", "suggestion": "<suggestion>"}], "missingProtections": ["<item>"], "summary": "<2-3 sentences>"}. Apply state-specific tenant protection laws when flagging issues and cite the exact statute in the explanation where applicable. Key rules: CA — deposits ≤2× rent unfurnished (Cal. Civ. Code § 1950.5), 21-day return, 24h entry notice; NY — 14-day deposit return, deposit ≤1 month (NY RPL § 227-e), 24h entry notice required; TX — 30-day deposit return (TX Prop. Code § 92.101), no cap; NJ — deposit interest required (NJ Stat. § 46:8-19), 30-day return; FL — 15/30/60-day return windows (FL Stat. § 83.49); WA — 14-day move-in inspection required (RCW 59.18.260); IL — 30-day return, itemized statement required (765 ILCS 710); MA — deposits limited to 1 month, last month rent + deposit (M.G.L. c. 186 § 15B). For unlisted states apply URLTA principles. If state is "Other" or "Unknown" apply URLTA only and explicitly note in the summary that state-specific protections could not be verified. Do NOT fabricate statute citations; omit if specific law is uncertain.`,
 };
@@ -76,6 +77,8 @@ export async function POST(req: NextRequest) {
     let state: string | undefined;
     // messageContent is either a plain string or an array of content blocks (PDF/image)
     let messageContent: string | object[];
+    // OpenFDA recall fetch — started early, awaited before Anthropic call (food-safety only)
+    let fdaPromise: ReturnType<typeof getRelevantRecalls> | null = null;
 
     // ── Multipart / file-upload path ───────────────────────────────────────────
     if (contentType.includes("multipart/form-data")) {
@@ -91,6 +94,11 @@ export async function POST(req: NextRequest) {
       }
       if (!file && !input.trim()) {
         return NextResponse.json({ error: "Missing input or file" }, { status: 400 });
+      }
+
+      // Start openFDA fetch in parallel with file processing (food-safety only)
+      if (tool === "food-safety") {
+        fdaPromise = getRelevantRecalls(input);
       }
 
       if (file) {
@@ -159,7 +167,28 @@ export async function POST(req: NextRequest) {
       if (!tool || !input) {
         return NextResponse.json({ error: "Missing tool or input" }, { status: 400 });
       }
+
+      // Start openFDA fetch in parallel with message assembly (food-safety only)
+      if (tool === "food-safety") {
+        fdaPromise = getRelevantRecalls(input);
+      }
+
       messageContent = buildTextContent(tool, input, jd, state);
+    }
+
+    // ── Inject live FDA recall data into the Claude message (food-safety only) ──
+    let fdaChecked = false;
+    if (fdaPromise) {
+      const { recalls, checked } = await fdaPromise;
+      fdaChecked = checked;
+      if (recalls.length > 0) {
+        const recallBlock = formatRecallsBlock(recalls);
+        if (typeof messageContent === "string") {
+          messageContent = `${messageContent}\n\n${recallBlock}`;
+        } else {
+          (messageContent as object[]).push({ type: "text", text: recallBlock });
+        }
+      }
     }
 
     const systemPrompt = TOOL_PROMPTS[tool];
@@ -196,7 +225,8 @@ export async function POST(req: NextRequest) {
     const clean = text.replace(/```json\n?|```\n?/g, "").trim();
     try {
       const parsed = JSON.parse(clean);
-      return NextResponse.json(parsed);
+      // fdaChecked: true means the openFDA live database was successfully queried
+      return NextResponse.json({ ...parsed, fdaChecked });
     } catch {
       console.error("Parse error — raw response:", clean.slice(0, 500));
       return NextResponse.json(

@@ -14,6 +14,7 @@ interface Result {
   grade: string;
   flags: Flag[];
   summary: string;
+  fdaChecked?: boolean;
 }
 
 const SEVERITY_STYLES = {
@@ -231,6 +232,11 @@ export function FoodSafetyClient() {
               <p className="text-muted text-xs mt-1">
                 Based on FDA data, allergen databases, and safety research
               </p>
+              {result.fdaChecked && (
+                <span className="inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full bg-green-500/10 border border-green-500/20 text-green-400 text-xs font-mono">
+                  ✓ Cross-referenced openFDA enforcement database
+                </span>
+              )}
             </div>
           </div>
 
