@@ -50,12 +50,12 @@ export default function RootLayout({
             });
           `}
         </Script>
-        {/* Google AdSense */}
+        {/* Google AdSense — beforeInteractive so the script tag appears in SSR HTML for crawler verification */}
         <Script
           async
           src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8082302563728806"
           crossOrigin="anonymous"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
         />
         <meta name="google-adsense-account" content="ca-pub-8082302563728806" />
 
