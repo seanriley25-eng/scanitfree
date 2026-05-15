@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 
@@ -30,6 +30,7 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 const CHAR_LIMIT = 24000;
+const FILE_SIZE_LIMIT = 10 * 1024 * 1024;
 
 const US_STATES = [
   "Alabama", "Alaska", "Arizona", "Arkansas", "California", "Colorado",
@@ -45,14 +46,40 @@ const US_STATES = [
   "Other / I don't know",
 ];
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export function LeaseClient() {
   const [input, setInput] = useState("");
   const [state, setState] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const canSubmit = !loading && !!input.trim() && !!state;
+  const hasLeaseInput = !!file || !!input.trim();
+  const canSubmit = !loading && hasLeaseInput && !!state;
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    if (!f) return;
+    if (f.size > FILE_SIZE_LIMIT) {
+      setError("File too large. Max 10MB.");
+      e.target.value = "";
+      return;
+    }
+    setFile(f);
+    setError("");
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const analyze = async () => {
     if (!canSubmit) return;
@@ -60,11 +87,21 @@ export function LeaseClient() {
     setError("");
     setResult(null);
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: "lease-scanner", input, state }),
-      });
+      let res: Response;
+      if (file) {
+        const formData = new FormData();
+        formData.append("tool", "lease-scanner");
+        formData.append("input", input);
+        formData.append("file", file);
+        formData.append("state", state);
+        res = await fetch("/api/analyze", { method: "POST", body: formData });
+      } else {
+        res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tool: "lease-scanner", input, state }),
+        });
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
@@ -86,7 +123,7 @@ export function LeaseClient() {
         <h1 className="font-heading text-2xl md:text-3xl font-bold text-[var(--text)]">Lease Red Flag Scanner</h1>
       </div>
       <p className="text-muted text-sm leading-relaxed mb-7">
-        Paste your lease or rental agreement below. Our AI identifies unfair clauses,
+        Upload your lease PDF or paste the text below. Our AI identifies unfair clauses,
         hidden fees, missing protections, and anything you should negotiate — explained
         in plain English with state-specific tenant law references.
       </p>
@@ -114,38 +151,84 @@ export function LeaseClient() {
         )}
       </div>
 
-      {/* Lease textarea */}
+      {/* Lease text input — optional when file is uploaded */}
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Paste your lease or rental agreement text here..."
+        placeholder={
+          file
+            ? "Optional: add clause numbers or sections you're most concerned about…"
+            : "Paste your lease or rental agreement text here..."
+        }
         rows={12}
         className="w-full bg-surface border border-border rounded-xl p-4 text-[var(--text)] font-mono text-sm resize-y outline-none focus:border-accent transition-colors"
       />
 
-      <div className="flex items-center justify-between mt-2 mb-1">
-        <span className={`text-xs font-mono ${input.length > CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
-          {input.length.toLocaleString()} / {CHAR_LIMIT.toLocaleString()} chars
-        </span>
-      </div>
+      {!file && (
+        <div className="flex items-center justify-between mt-2 mb-1">
+          <span className={`text-xs font-mono ${input.length > CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
+            {input.length.toLocaleString()} / {CHAR_LIMIT.toLocaleString()} chars
+          </span>
+        </div>
+      )}
 
-      {input.length > CHAR_LIMIT && (
+      {!file && input.length > CHAR_LIMIT && (
         <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-sm">
           ⚠️ Your lease is too long — only the first {CHAR_LIMIT.toLocaleString()} characters will be reviewed.
           Consider splitting it into sections or reviewing the most critical clauses first.
         </div>
       )}
 
+      {/* File upload */}
+      <div className="mt-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {!file ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-muted text-sm hover:border-accent hover:text-accent transition-colors w-full justify-center"
+            >
+              📎 Or upload a file (PDF, DOCX)
+            </button>
+            <p className="mt-1.5 text-muted text-xs text-center">
+              📄 Upload your lease as PDF, or paste the text. Long leases (10+ pages) are fully supported.
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/30">
+            <span className="text-lg">📄</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-[var(--text)] font-mono truncate">{file.name}</p>
+              <p className="text-xs text-muted">{formatBytes(file.size)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={removeFile}
+              className="text-xs text-muted hover:text-red-400 transition-colors whitespace-nowrap"
+            >
+              ✕ Remove
+            </button>
+          </div>
+        )}
+      </div>
+
       <button
         onClick={analyze}
         disabled={!canSubmit}
-        className={`mt-1 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
+        className={`mt-4 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
           !canSubmit
             ? "bg-border text-muted cursor-not-allowed"
             : "bg-accent text-white hover:brightness-110 cursor-pointer"
         }`}
       >
-        {loading ? "Scanning..." : "Scan for Red Flags"}
+        {loading ? "Scanning..." : file ? "Scan File" : "Scan for Red Flags"}
       </button>
 
       <p className="mt-2 text-muted text-xs">🔒 Your input is processed and discarded — we never store your data.</p>
@@ -206,8 +289,8 @@ export function LeaseClient() {
       <section className="mt-14 border-t border-border pt-10">
         <h2 className="font-display text-2xl text-[var(--text)] mb-3">How the Lease Scanner works</h2>
         <p className="text-muted text-sm leading-relaxed mb-4">
-          Our AI analyzes your lease text against both common tenant protection standards
-          and the specific laws of your state. Select your state to get jurisdiction-aware
+          Upload your lease PDF or paste the text — our AI handles both. Long leases of 10+
+          pages are fully supported via PDF upload. Select your state to get jurisdiction-aware
           analysis — whether that&apos;s California&apos;s deposit caps, New York&apos;s entry notice
           requirements, New Jersey&apos;s deposit interest rules, or Texas&apos;s return deadlines.
           Each red flag is cited to the applicable statute so you can verify it yourself.

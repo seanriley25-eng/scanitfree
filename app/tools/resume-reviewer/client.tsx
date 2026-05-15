@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 
@@ -34,25 +34,63 @@ const GRADE_COLORS: Record<string, string> = {
 
 const CHAR_LIMIT = 24000;
 const JD_CHAR_LIMIT = 8000;
+const FILE_SIZE_LIMIT = 10 * 1024 * 1024;
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function ResumeClient() {
   const [input, setInput] = useState("");
   const [jd, setJd] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const hasResumeInput = !!file || !!input.trim();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    if (!f) return;
+    if (f.size > FILE_SIZE_LIMIT) {
+      setError("File too large. Max 10MB.");
+      e.target.value = "";
+      return;
+    }
+    setFile(f);
+    setError("");
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const analyze = async () => {
-    if (!input.trim()) return;
+    if (!hasResumeInput) return;
     setLoading(true);
     setError("");
     setResult(null);
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: "resume-reviewer", input, jd: jd.trim() || undefined }),
-      });
+      let res: Response;
+      if (file) {
+        const formData = new FormData();
+        formData.append("tool", "resume-reviewer");
+        formData.append("input", input);
+        formData.append("file", file);
+        if (jd.trim()) formData.append("jd", jd.trim());
+        res = await fetch("/api/analyze", { method: "POST", body: formData });
+      } else {
+        res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tool: "resume-reviewer", input, jd: jd.trim() || undefined }),
+        });
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
@@ -74,34 +112,79 @@ export function ResumeClient() {
         <h1 className="font-heading text-2xl md:text-3xl font-bold text-[var(--text)]">Resume Reviewer</h1>
       </div>
       <p className="text-muted text-sm leading-relaxed mb-7">
-        Paste your resume text below. Our AI evaluates formatting, impact, ATS compatibility,
-        and overall positioning — then gives you specific, actionable feedback. Add a job description
-        for targeted keyword matching against that specific role.
+        Upload your resume as PDF or DOCX, or paste the text below. Add a job description
+        for targeted ATS keyword matching against that specific role.
       </p>
 
       <AdSlot size="leaderboard" className="mb-6" />
 
-      {/* Resume textarea */}
+      {/* Resume text input — optional when file is uploaded */}
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
-        placeholder="Paste your full resume text here..."
+        placeholder={
+          file
+            ? "Optional: paste additional context or a cover letter here…"
+            : "Paste your full resume text here..."
+        }
         rows={10}
         className="w-full bg-surface border border-border rounded-xl p-4 text-[var(--text)] font-mono text-sm resize-y outline-none focus:border-accent transition-colors"
       />
 
-      <div className="flex items-center justify-between mt-2 mb-1">
-        <span className={`text-xs font-mono ${input.length > CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
-          {input.length.toLocaleString()} / {CHAR_LIMIT.toLocaleString()} chars
-        </span>
-      </div>
+      {!file && (
+        <div className="flex items-center justify-between mt-2 mb-1">
+          <span className={`text-xs font-mono ${input.length > CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
+            {input.length.toLocaleString()} / {CHAR_LIMIT.toLocaleString()} chars
+          </span>
+        </div>
+      )}
 
-      {input.length > CHAR_LIMIT && (
+      {!file && input.length > CHAR_LIMIT && (
         <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-sm">
           ⚠️ Your resume is too long — only the first {CHAR_LIMIT.toLocaleString()} characters will be reviewed.
           Consider removing non-essential sections or splitting into multiple scans.
         </div>
       )}
+
+      {/* File upload */}
+      <div className="mt-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {!file ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-muted text-sm hover:border-accent hover:text-accent transition-colors w-full justify-center"
+            >
+              📎 Or upload a file (PDF, DOCX)
+            </button>
+            <p className="mt-1.5 text-muted text-xs text-center">
+              💡 Upload your resume as PDF or DOCX, or paste the text above.
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/30">
+            <span className="text-lg">📄</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-[var(--text)] font-mono truncate">{file.name}</p>
+              <p className="text-xs text-muted">{formatBytes(file.size)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={removeFile}
+              className="text-xs text-muted hover:text-red-400 transition-colors whitespace-nowrap"
+            >
+              ✕ Remove
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Optional JD textarea */}
       <div className="mt-5">
@@ -132,14 +215,18 @@ export function ResumeClient() {
 
       <button
         onClick={analyze}
-        disabled={loading || !input.trim()}
+        disabled={loading || !hasResumeInput}
         className={`mt-4 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
-          loading || !input.trim()
+          loading || !hasResumeInput
             ? "bg-border text-muted cursor-not-allowed"
             : "bg-accent text-white hover:brightness-110 cursor-pointer"
         }`}
       >
-        {loading ? "Reviewing..." : jd.trim() ? "Review Against This JD" : "Review My Resume"}
+        {loading
+          ? "Reviewing..."
+          : file
+          ? jd.trim() ? "Scan File Against This JD" : "Scan File"
+          : jd.trim() ? "Review Against This JD" : "Review My Resume"}
       </button>
 
       <p className="mt-2 text-muted text-xs">🔒 Your input is processed and discarded — we never store your data.</p>
@@ -269,12 +356,13 @@ export function ResumeClient() {
       <section className="mt-14 border-t border-border pt-10">
         <h2 className="font-display text-2xl text-[var(--text)] mb-3">How the AI Resume Reviewer works</h2>
         <p className="text-muted text-sm leading-relaxed mb-4">
-          Our AI resume reviewer evaluates your resume against current hiring standards used
-          by recruiters and applicant tracking systems (ATS). It scores your resume across
-          multiple dimensions including formatting clarity, quantified achievements, keyword
-          optimization, and overall narrative strength. Paste a job description to unlock
-          ATS keyword match analysis — see exactly which keywords the role requires that
-          your resume is missing, and which ones you already nail.
+          Upload your resume as a PDF or DOCX file, or paste the text directly. Our AI
+          evaluates your resume against current hiring standards used by recruiters and
+          applicant tracking systems (ATS). It scores your resume across multiple dimensions
+          including formatting clarity, quantified achievements, keyword optimization, and
+          overall narrative strength. Paste a job description to unlock ATS keyword match
+          analysis — see exactly which keywords the role requires that your resume is missing,
+          and which ones you already nail.
         </p>
         <p className="text-muted text-xs leading-relaxed italic">
           Disclaimer: This tool provides general resume feedback and is not a substitute for

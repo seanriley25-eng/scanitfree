@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Link from "next/link";
 import { AdSlot } from "@/components/AdSlot";
 
@@ -31,25 +31,62 @@ const GRADE_COLORS: Record<string, string> = {
 };
 
 const CHAR_LIMIT = 24000;
+const FILE_SIZE_LIMIT = 10 * 1024 * 1024;
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
 
 export function FoodSafetyClient() {
   const [input, setInput] = useState("");
+  const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const hasInput = !!file || !!input.trim();
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    if (!f) return;
+    if (f.size > FILE_SIZE_LIMIT) {
+      setError("File too large. Max 10MB.");
+      e.target.value = "";
+      return;
+    }
+    setFile(f);
+    setError("");
+  };
+
+  const removeFile = () => {
+    setFile(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
 
   const analyze = async () => {
-    if (!input.trim()) return;
+    if (!hasInput) return;
     setLoading(true);
     setError("");
     setResult(null);
 
     try {
-      const res = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: "food-safety", input }),
-      });
+      let res: Response;
+      if (file) {
+        const formData = new FormData();
+        formData.append("tool", "food-safety");
+        formData.append("input", input);
+        formData.append("file", file);
+        res = await fetch("/api/analyze", { method: "POST", body: formData });
+      } else {
+        res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tool: "food-safety", input }),
+        });
+      }
       const data = await res.json();
       if (data.error) throw new Error(data.error);
       setResult(data);
@@ -76,46 +113,91 @@ export function FoodSafetyClient() {
         </h1>
       </div>
       <p className="text-muted text-sm leading-relaxed mb-7">
-        Paste an ingredient list, product name, or UPC — our AI cross-references
-        FDA recalls, allergen databases, and safety research to give you a clear
-        safety score.
+        Paste an ingredient list, product name, or UPC — or upload a photo of the label.
+        Our AI cross-references FDA recalls, allergen databases, and safety research to give
+        you a clear safety score.
       </p>
 
       <AdSlot size="leaderboard" className="mb-6" />
 
+      {/* Text input — optional when file is selected */}
       <textarea
         value={input}
         onChange={(e) => setInput(e.target.value)}
         placeholder={
-          "Paste ingredient list, product name, or UPC code...\n\nExample: Doritos Nacho Cheese Tortilla Chips"
+          file
+            ? "Optional: add product name or extra context here…"
+            : "Paste ingredient list, product name, or UPC code...\n\nExample: Doritos Nacho Cheese Tortilla Chips"
         }
         rows={5}
         className="w-full bg-surface border border-border rounded-xl p-4 text-[var(--text)] font-mono text-sm resize-y outline-none focus:border-accent transition-colors"
       />
 
-      <div className="flex items-center justify-between mt-2 mb-1">
-        <span className={`text-xs font-mono ${input.length > CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
-          {input.length.toLocaleString()} / {CHAR_LIMIT.toLocaleString()} chars
-        </span>
-      </div>
+      {!file && (
+        <div className="flex items-center justify-between mt-2 mb-1">
+          <span className={`text-xs font-mono ${input.length > CHAR_LIMIT ? "text-red-400" : "text-muted"}`}>
+            {input.length.toLocaleString()} / {CHAR_LIMIT.toLocaleString()} chars
+          </span>
+        </div>
+      )}
 
-      {input.length > CHAR_LIMIT && (
+      {!file && input.length > CHAR_LIMIT && (
         <div className="mb-3 p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/30 text-yellow-300 text-sm">
           ⚠️ Your input is too long — only the first {CHAR_LIMIT.toLocaleString()} characters will be analyzed.
           Consider trimming to the most relevant ingredients or sections.
         </div>
       )}
 
+      {/* File upload */}
+      <div className="mt-3">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".pdf,.docx,.png,.jpg,.jpeg,.webp,image/*,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        {!file ? (
+          <div>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-border text-muted text-sm hover:border-accent hover:text-accent transition-colors w-full justify-center"
+            >
+              📎 Or upload a file (PDF, DOCX, PNG, JPG)
+            </button>
+            <p className="mt-1.5 text-muted text-xs text-center">
+              📸 Tip: take a photo of the ingredient label or upload the product packaging.
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3 p-3 rounded-lg bg-accent/5 border border-accent/30">
+            <span className="text-lg">📄</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-[var(--text)] font-mono truncate">{file.name}</p>
+              <p className="text-xs text-muted">{formatBytes(file.size)}</p>
+            </div>
+            <button
+              type="button"
+              onClick={removeFile}
+              className="text-xs text-muted hover:text-red-400 transition-colors whitespace-nowrap"
+            >
+              ✕ Remove
+            </button>
+          </div>
+        )}
+      </div>
+
       <button
         onClick={analyze}
-        disabled={loading || !input.trim()}
-        className={`mt-1 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
-          loading || !input.trim()
+        disabled={loading || !hasInput}
+        className={`mt-4 px-8 py-3 rounded-lg font-heading font-semibold text-sm transition-all ${
+          loading || !hasInput
             ? "bg-border text-muted cursor-not-allowed"
             : "bg-accent text-white hover:brightness-110 cursor-pointer"
         }`}
       >
-        {loading ? "Analyzing..." : "Scan for Safety Issues"}
+        {loading ? "Analyzing..." : file ? "Scan File" : "Scan for Safety Issues"}
       </button>
 
       <p className="mt-2 text-muted text-xs">🔒 Your input is processed and discarded — we never store your data.</p>
@@ -183,11 +265,12 @@ export function FoodSafetyClient() {
         </h2>
         <p className="text-muted text-sm leading-relaxed mb-4">
           Our AI-powered food safety scanner analyzes product names, ingredient
-          lists, and UPC codes against multiple data sources to give you an
-          instant safety assessment. We cross-reference the FDA enforcement
-          action database for active recalls and warning letters, known allergen
-          databases for undeclared allergen risks, published research on food
-          additives and their safety profiles, and nutritional guidelines for
+          lists, UPC codes, and uploaded label photos against multiple data sources
+          to give you an instant safety assessment. Snap a photo of any ingredient
+          label and upload it directly — no typing required. We cross-reference the
+          FDA enforcement action database for active recalls and warning letters,
+          known allergen databases for undeclared allergen risks, published research
+          on food additives and their safety profiles, and nutritional guidelines for
           excessive sodium, sugar, and harmful fats.
         </p>
         <h3 className="font-heading text-sm font-semibold text-[var(--text)] mb-2">
