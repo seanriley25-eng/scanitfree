@@ -50,11 +50,12 @@ scanitfree/
 │   ├── api/
 │   │   └── analyze/route.ts  # Claude API endpoint — handles all tools
 │   └── tools/
-│       ├── food-safety/                  # Food Safety Scanner
-│       ├── resume-reviewer/              # Resume Reviewer
-│       ├── lease-scanner/                # Lease Red Flag Scanner
-│       ├── cover-letter-reviewer/        # Cover Letter Reviewer
-│       └── privacy-policy-translator/    # Privacy Policy Translator
+│       ├── food-safety/                     # Food Safety Scanner
+│       ├── resume-reviewer/                 # Resume Reviewer
+│       ├── lease-scanner/                   # Lease Red Flag Scanner
+│       ├── cover-letter-reviewer/           # Cover Letter Reviewer
+│       ├── privacy-policy-translator/       # Privacy Policy Translator
+│       └── cosmetic-ingredient-scanner/     # Cosmetic Ingredient Scanner
 ├── components/
 │   ├── Nav.tsx
 │   ├── Footer.tsx
