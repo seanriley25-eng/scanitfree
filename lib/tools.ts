@@ -84,6 +84,20 @@ export const TOOLS: Tool[] = [
       "Paste any privacy policy or upload as PDF. Get a plain-English breakdown of what they actually do with your data, red flags, data sharing, and your rights under GDPR and CCPA. Free, no signup.",
   },
   {
+    id: "cosmetic-ingredient-scanner",
+    name: "Cosmetic Ingredient Scanner",
+    desc: "Upload a product label photo or paste the ingredient list — EWG-style concern scores, pregnancy safety flags, and claims verification",
+    icon: "🧴",
+    category: "Health",
+    status: "live",
+    searchVolume: "12.5K/mo",
+    cta: "Scan Ingredients",
+    href: "/tools/cosmetic-ingredient-scanner",
+    seoTitle: "Free Cosmetic Ingredient Scanner — EWG-Style Safety Scores & Pregnancy Flags",
+    seoDesc:
+      "Paste any ingredient list or upload a product label photo. Get EWG-style concern scores, pregnancy safety flags, fragrance-free verification, and plain-English breakdowns for every ingredient. Free, no signup.",
+  },
+  {
     id: "pet-symptom",
     name: "Pet Symptom Checker",
     desc: "Describe your pet's symptoms and get guidance on urgency and next steps",
