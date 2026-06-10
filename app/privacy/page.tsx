@@ -9,11 +9,11 @@ export default function PrivacyPage() {
   return (
     <div className="max-w-[640px] mx-auto px-6 py-16">
       <h1 className="font-display text-4xl text-[var(--text)] mb-2">Privacy Policy</h1>
-      <p className="text-muted text-xs font-mono mb-8">Last updated: May 7, 2026</p>
+      <p className="text-muted text-xs font-mono mb-8">Last updated: June 10, 2026</p>
 
       <div className="text-muted text-sm leading-relaxed space-y-4">
         <p>
-          ScanItFree (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;), operated by Riley Solutions, respects your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit scanitfree.com (the &ldquo;Site&rdquo;) and use our AI-powered tools (the &ldquo;Services&rdquo;). Please read this policy carefully. If you do not agree with the terms of this policy, please do not access the Site.
+          ScanItFree (&ldquo;we,&rdquo; &ldquo;our,&rdquo; or &ldquo;us&rdquo;), operated by Farallone Media LLC, respects your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you visit scanitfree.com (the &ldquo;Site&rdquo;) and use our AI-powered tools (the &ldquo;Services&rdquo;). Please read this policy carefully. If you do not agree with the terms of this policy, please do not access the Site.
         </p>
 
         <h2 className="font-heading text-base font-semibold text-[var(--text)] pt-2">1. Information We Collect</h2>
@@ -124,7 +124,7 @@ export default function PrivacyPage() {
           <li><strong className="text-[var(--text)]">Right to lodge a complaint</strong> — file a complaint with your local data protection authority</li>
         </ul>
         <p>Our legal bases for processing are: (a) consent for advertising and analytics cookies, (b) legitimate interests for site operation and security, and (c) compliance with legal obligations.</p>
-        <p>To exercise any of these rights, contact us at <a href="mailto:privacy@scanitfree.com" className="text-accent">privacy@scanitfree.com</a>.</p>
+        <p>To exercise any of these rights, contact us at <a href="mailto:privacy@farallone.com" className="text-accent">privacy@farallone.com</a>.</p>
 
         <h3 className="font-heading text-sm font-semibold text-[var(--text)]">6.2 California Residents (CCPA/CPRA)</h3>
         <p>If you are a California resident, you have the following rights under the California Consumer Privacy Act (CCPA) and California Privacy Rights Act (CPRA):</p>
@@ -137,10 +137,10 @@ export default function PrivacyPage() {
           <li><strong className="text-[var(--text)]">Right to limit</strong> the use of sensitive personal information</li>
         </ul>
         <p>We do not sell personal information for monetary consideration. However, our use of advertising cookies may constitute &ldquo;sharing&rdquo; under the CPRA. You can opt out by rejecting advertising cookies in our cookie banner or by visiting our Do Not Sell or Share My Personal Information page (link in footer).</p>
-        <p>To exercise any of these rights, contact us at <a href="mailto:privacy@scanitfree.com" className="text-accent">privacy@scanitfree.com</a>.</p>
+        <p>To exercise any of these rights, contact us at <a href="mailto:privacy@farallone.com" className="text-accent">privacy@farallone.com</a>.</p>
 
         <h3 className="font-heading text-sm font-semibold text-[var(--text)]">6.3 Other US States</h3>
-        <p>Residents of states with comprehensive privacy laws (including but not limited to Virginia, Colorado, Connecticut, Utah, Texas, Oregon, and Washington) have similar rights. Contact us at <a href="mailto:privacy@scanitfree.com" className="text-accent">privacy@scanitfree.com</a> to exercise them.</p>
+        <p>Residents of states with comprehensive privacy laws (including but not limited to Virginia, Colorado, Connecticut, Utah, Texas, Oregon, and Washington) have similar rights. Contact us at <a href="mailto:privacy@farallone.com" className="text-accent">privacy@farallone.com</a> to exercise them.</p>
 
         <h2 className="font-heading text-base font-semibold text-[var(--text)] pt-2">7. Data Retention</h2>
         <ul className="list-disc pl-5 space-y-1">
@@ -155,7 +155,7 @@ export default function PrivacyPage() {
         <p>No method of transmission over the internet is 100% secure. We cannot guarantee absolute security but make commercially reasonable efforts to protect your information.</p>
 
         <h2 className="font-heading text-base font-semibold text-[var(--text)] pt-2">9. Children&apos;s Privacy</h2>
-        <p>The Site is not directed to children under 13 (or under 16 in the EEA/UK). We do not knowingly collect personal information from children. If we learn that we have collected personal information from a child without verifiable parental consent, we will delete it promptly. If you believe a child has provided us with personal information, contact us at <a href="mailto:privacy@scanitfree.com" className="text-accent">privacy@scanitfree.com</a>.</p>
+        <p>The Site is not directed to children under 13 (or under 16 in the EEA/UK). We do not knowingly collect personal information from children. If we learn that we have collected personal information from a child without verifiable parental consent, we will delete it promptly. If you believe a child has provided us with personal information, contact us at <a href="mailto:privacy@farallone.com" className="text-accent">privacy@farallone.com</a>.</p>
 
         <h2 className="font-heading text-base font-semibold text-[var(--text)] pt-2">10. International Data Transfers</h2>
         <p>The Site is operated from the United States. If you are accessing the Site from outside the United States, your information may be transferred to, stored, and processed in the United States or other countries where our service providers operate. For transfers from the EEA, UK, or Switzerland, we rely on appropriate safeguards including Standard Contractual Clauses where required.</p>
@@ -170,9 +170,9 @@ export default function PrivacyPage() {
         <p>For questions about this Privacy Policy or to exercise your privacy rights:</p>
         <p>
           <strong className="text-[var(--text)]">Email:</strong>{" "}
-          <a href="mailto:privacy@scanitfree.com" className="text-accent">privacy@scanitfree.com</a>
+          <a href="mailto:privacy@farallone.com" className="text-accent">privacy@farallone.com</a>
           <br />
-          <strong className="text-[var(--text)]">Operator:</strong> Riley Solutions
+          <strong className="text-[var(--text)]">Operator:</strong> Farallone Media LLC
           <br />
           <strong className="text-[var(--text)]">Site:</strong> https://scanitfree.com
         </p>
