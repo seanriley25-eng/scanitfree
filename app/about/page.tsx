@@ -12,23 +12,30 @@ export default function AboutPage() {
 
       <div className="text-muted text-sm leading-relaxed space-y-4">
         <p>
-          ScanItFree is a collection of free, AI-powered utility tools designed to help
-          people make better everyday decisions. From checking whether a food product has
-          been recalled to getting instant feedback on a resume, each tool is built to
-          deliver real, actionable results in seconds.
+          ScanItFree is a suite of free, AI-powered scanning and analysis tools built to
+          help people make better everyday decisions. From checking whether a food product
+          has been recalled to analyzing a lease agreement, cosmetic ingredients, a resume,
+          cover letter, or privacy policy, each tool delivers real, actionable results in
+          seconds with no signup required.
         </p>
         <p>
-          Every tool combines advanced AI analysis with real public data sources. Our Food
-          Safety Scanner cross-references the FDA enforcement action database. Our Resume
-          Reviewer evaluates against current ATS standards and hiring best practices. Our
-          Lease Scanner checks your rental agreement against common tenant protection
-          standards.
+          Every tool combines advanced AI analysis (powered by Anthropic&apos;s Claude API)
+          with real public data sources. Our Food Safety Scanner cross-references the FDA
+          enforcement action database. Our Lease Scanner checks rental agreements against
+          common tenant protection standards. Our Resume Reviewer evaluates against current
+          ATS standards and hiring best practices.
         </p>
         <p>
-          We believe useful information should be accessible to everyone. That&apos;s why
-          every tool on ScanItFree is completely free to use — no signup, no paywall, no
-          hidden fees. The site is supported by advertising, which allows us to keep
-          building and improving these tools.
+          We believe AI-powered document and label analysis should be accessible to
+          everyone, not locked behind paywalls or subscriptions. That&apos;s why every tool
+          on ScanItFree is completely free to use. The site is supported by advertising,
+          which allows us to keep building and improving these tools.
+        </p>
+        <p>
+          ScanItFree is operated by <strong className="text-[var(--text)]">Farallone Media LLC</strong>.
+          All tools are for informational purposes only and do not constitute legal, medical,
+          or professional advice of any kind. Always consult a qualified professional for
+          decisions that affect your health, legal rights, or financial wellbeing.
         </p>
 
         <h2 className="font-heading text-lg font-semibold text-[var(--text)] pt-4">Our principles</h2>
@@ -45,7 +52,7 @@ export default function AboutPage() {
         <p>
           <strong className="text-[var(--text)]">Transparency:</strong> Every tool clearly states its
           limitations and includes appropriate disclaimers. Our tools provide informational
-          guidance — not professional advice.
+          guidance, not professional advice.
         </p>
 
         <h2 className="font-heading text-lg font-semibold text-[var(--text)] pt-4">Contact</h2>
