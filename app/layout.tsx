@@ -6,6 +6,7 @@ import { Footer } from "@/components/Footer";
 import CookieConsent from "@/components/CookieConsent";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://scanitfree.com"),
   title: "ScanItFree — Free AI-Powered Utilities for Everyday Decisions",
   description:
     "Free AI tools for food safety scanning, resume reviews, lease red-flag detection, and more. No signup required. Powered by real data sources.",
@@ -22,6 +23,11 @@ export const metadata: Metadata = {
     description:
       "Scan ingredients for safety, review your resume, check leases for red flags — all free, no signup.",
     type: "website",
+    images: [{ url: "/og", width: 1200, height: 630 }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    images: ["/og"],
   },
 };
 
