@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { scoreResume, type ScoreResult, type StructuredResume } from "@/lib/resume-scorer";
+import { scoreResume, maxAchievableScore, type ScoreResult, type StructuredResume } from "@/lib/resume-scorer";
 import { matchCompany } from "@/lib/resume-prompts";
 
 interface Feedback {
@@ -14,6 +14,16 @@ interface RewriteState {
   changes: string[];
   pass: number;
   declined: string[];
+  related: string[];
+  ceiling: number;
+  target: number;
+  unaddressed: string[];
+  warnings: string[];
+}
+
+interface GapInfo {
+  meaning: string;
+  relatedHint: string | null;
 }
 
 function generateResumeHTML(r: StructuredResume): string {
@@ -195,7 +205,37 @@ export function ResumeProClient() {
   const [toolsContext, setToolsContext] = useState("");
   const [fileName, setFileName] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [relatedSkills, setRelatedSkills] = useState<Map<string, string>>(new Map());
+  const [expandedRelated, setExpandedRelated] = useState<Set<string>>(new Set());
+  const [gapInfo, setGapInfo] = useState<Record<string, GapInfo>>({});
+  const [explaining, setExplaining] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const setRelated = (k: string, experience: string) => {
+    const next = new Map(relatedSkills);
+    if (experience.trim()) next.set(k, experience);
+    else next.delete(k);
+    setRelatedSkills(next);
+    if (experience.trim() && confirmedSkills.has(k)) {
+      const c = new Set(confirmedSkills);
+      c.delete(k);
+      setConfirmedSkills(c);
+    }
+  };
+
+  const toggleConfirmed = (k: string) => {
+    const next = new Set(confirmedSkills);
+    if (next.has(k)) next.delete(k);
+    else {
+      next.add(k);
+      if (relatedSkills.has(k)) {
+        const r = new Map(relatedSkills);
+        r.delete(k);
+        setRelatedSkills(r);
+      }
+    }
+    setConfirmedSkills(next);
+  };
 
   const handleFile = async (file: File) => {
     setUploading(true);
@@ -262,6 +302,9 @@ export function ResumeProClient() {
     setVerifiedScore(null);
     setVerifiedText("");
     setConfirmedSkills(new Set());
+    setRelatedSkills(new Map());
+    setExpandedRelated(new Set());
+    setGapInfo({});
     setTab("scan");
     setError(null);
     try {
@@ -290,6 +333,9 @@ export function ResumeProClient() {
     setVerifiedScore(null);
     setVerifiedText("");
     setConfirmedSkills(new Set());
+    setRelatedSkills(new Map());
+    setExpandedRelated(new Set());
+    setGapInfo({});
     setTab("scan");
     setError(null);
     try {
@@ -325,6 +371,11 @@ export function ResumeProClient() {
         verifiedScore: ScoreResult;
         verifiedText: string;
         declined: string[];
+        related: string[];
+        ceiling: number;
+        target: number;
+        unaddressed: string[];
+        warnings: string[];
       }>({
         action: "rewrite",
         resume,
@@ -332,11 +383,21 @@ export function ResumeProClient() {
         kwList,
         scoreResult,
         confirmedSkills: Array.from(confirmedSkills),
+        relatedSkills: Array.from(relatedSkills, ([keyword, experience]) => ({ keyword, experience })),
         companyName,
         toolsContext,
       });
       setFinalResume(r.finalResume);
-      setRewrite({ changes: r.changes || [], pass: r.pass || 1, declined: r.declined || [] });
+      setRewrite({
+        changes: r.changes || [],
+        pass: r.pass || 1,
+        declined: r.declined || [],
+        related: r.related || [],
+        ceiling: r.ceiling ?? 100,
+        target: r.target ?? 90,
+        unaddressed: r.unaddressed || [],
+        warnings: r.warnings || [],
+      });
       setVerifiedScore(r.verifiedScore);
       setVerifiedText(r.verifiedText);
     } catch (e: any) {
@@ -344,6 +405,25 @@ export function ResumeProClient() {
     }
     setGenerating(false);
     setRewriting(false);
+  };
+
+  const doExplainGaps = async () => {
+    if (!scoreResult || scoreResult.ats.missing.length === 0) return;
+    setExplaining(true);
+    setError(null);
+    try {
+      const r = await apiCall<{ gaps: { keyword: string; meaning: string; relatedHint: string | null }[] }>({
+        action: "explain_gaps",
+        resume,
+        missing: scoreResult.ats.missing,
+      });
+      const next: Record<string, GapInfo> = {};
+      for (const g of r.gaps || []) next[g.keyword] = { meaning: g.meaning, relatedHint: g.relatedHint };
+      setGapInfo(next);
+    } catch (e: any) {
+      setError(e?.message || String(e));
+    }
+    setExplaining(false);
   };
 
   const downloadResume = () => {
@@ -604,12 +684,11 @@ export function ResumeProClient() {
               {(() => {
                 const found = scoreResult.ats.found || [];
                 const missing = scoreResult.ats.missing || [];
-                const totalConfirmed = found.length + confirmedSkills.size;
-                const projectedAts = Math.round((totalConfirmed / Math.max(kwList.length, 1)) * 15);
-                const projectedTotal = Math.min(
-                  100,
-                  scoreResult.total - scoreResult.ats.score + projectedAts + (confirmedSkills.size > 0 ? Math.min(confirmedSkills.size * 2, 10) : 0)
-                );
+                const directCount = found.length + confirmedSkills.size;
+                const relatedCount = Array.from(relatedSkills.keys()).filter(k => missing.includes(k) && !confirmedSkills.has(k)).length;
+                const notAdded = missing.filter(k => !confirmedSkills.has(k) && !relatedSkills.has(k));
+                const ceiling = maxAchievableScore(directCount, relatedCount, kwList.length);
+                const hasGapInfo = Object.keys(gapInfo).length > 0;
                 return (
                   <>
                     <div style={{ background: "rgba(99,102,241,0.04)", border: "1px solid rgba(99,102,241,0.12)", borderRadius: 12, padding: "16px 20px", marginBottom: 16 }}>
@@ -694,42 +773,92 @@ export function ResumeProClient() {
                     <div style={{ marginBottom: 16 }}>
                       <div style={{ color: "#ef4444", fontWeight: 700, fontSize: 13, marginBottom: 4 }}>❌ Missing Skills ({missing.length} not found)</div>
                       <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 12, marginBottom: 10 }}>
-                        Check the skills below that you <strong>actually have</strong>. Only checked skills will be added to your optimized resume.
+                        For each one: check it if you <strong>actually have</strong> it, or add <strong>related experience</strong> if you did something comparable. Anything left blank is never added — the optimizer works around it.
                       </p>
+                      {missing.length > 0 && (
+                        <button
+                          onClick={doExplainGaps}
+                          disabled={explaining}
+                          style={{
+                            width: "100%",
+                            padding: "10px 14px",
+                            marginBottom: 10,
+                            background: hasGapInfo ? "rgba(255,255,255,0.04)" : "rgba(99,102,241,0.12)",
+                            border: `1px solid ${hasGapInfo ? "rgba(255,255,255,0.08)" : "rgba(99,102,241,0.3)"}`,
+                            borderRadius: 10,
+                            color: hasGapInfo ? "rgba(255,255,255,0.5)" : "#8b5cf6",
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            cursor: explaining ? "wait" : "pointer",
+                          }}
+                        >
+                          {explaining
+                            ? "⏳ Reading your resume for related experience..."
+                            : hasGapInfo
+                              ? "🔄 Re-analyze related experience"
+                              : "💡 Explain these terms & find related experience in my resume"}
+                        </button>
+                      )}
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {missing.map((k, i) => {
                           const checked = confirmedSkills.has(k);
+                          const relatedText = relatedSkills.get(k) || "";
+                          const isRelated = !checked && relatedText.trim().length > 0;
+                          const expanded = expandedRelated.has(k) || isRelated;
+                          const info = gapInfo[k];
+                          const border = checked ? "rgba(99,102,241,0.25)" : isRelated ? "rgba(234,179,8,0.3)" : "rgba(255,255,255,0.06)";
+                          const bg = checked ? "rgba(99,102,241,0.08)" : isRelated ? "rgba(234,179,8,0.05)" : "rgba(255,255,255,0.02)";
                           return (
-                            <label
-                              key={i}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 10,
-                                padding: "10px 14px",
-                                background: checked ? "rgba(99,102,241,0.08)" : "rgba(255,255,255,0.02)",
-                                border: `1px solid ${checked ? "rgba(99,102,241,0.25)" : "rgba(255,255,255,0.06)"}`,
-                                borderRadius: 10,
-                                cursor: "pointer",
-                                transition: "all 0.15s",
-                              }}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={checked}
-                                onChange={() => {
-                                  const next = new Set(confirmedSkills);
-                                  if (checked) next.delete(k);
-                                  else next.add(k);
-                                  setConfirmedSkills(next);
-                                }}
-                                style={{ width: 18, height: 18, accentColor: "#8b5cf6", cursor: "pointer" }}
-                              />
-                              <span style={{ color: checked ? "#fff" : "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: checked ? 600 : 400 }}>{k}</span>
-                              {checked && (
-                                <span style={{ marginLeft: "auto", fontSize: 10, color: "#8b5cf6", fontWeight: 600 }}>WILL BE ADDED</span>
+                            <div key={i} style={{ padding: "10px 14px", background: bg, border: `1px solid ${border}`, borderRadius: 10, transition: "all 0.15s" }}>
+                              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={checked}
+                                  onChange={() => toggleConfirmed(k)}
+                                  style={{ width: 18, height: 18, accentColor: "#8b5cf6", cursor: "pointer", flexShrink: 0 }}
+                                />
+                                <span style={{ color: checked || isRelated ? "#fff" : "rgba(255,255,255,0.5)", fontSize: 13, fontWeight: checked || isRelated ? 600 : 400 }}>{k}</span>
+                                {checked && <span style={{ marginLeft: "auto", fontSize: 10, color: "#8b5cf6", fontWeight: 600, whiteSpace: "nowrap" }}>WILL BE ADDED</span>}
+                                {isRelated && <span style={{ marginLeft: "auto", fontSize: 10, color: "#eab308", fontWeight: 600, whiteSpace: "nowrap" }}>RELATED · ADJACENT FRAMING</span>}
+                              </label>
+                              {info?.meaning && (
+                                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11.5, lineHeight: 1.5, marginTop: 6, paddingLeft: 28 }}>{info.meaning}</div>
                               )}
-                            </label>
+                              {!checked && (
+                                <div style={{ paddingLeft: 28, marginTop: 6 }}>
+                                  {info?.relatedHint && !isRelated && (
+                                    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", padding: "8px 10px", background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.15)", borderRadius: 8, marginBottom: 6 }}>
+                                      <span style={{ color: "rgba(234,179,8,0.85)", fontSize: 11.5, lineHeight: 1.5, flex: 1 }}>💡 {info.relatedHint}</span>
+                                      <button
+                                        onClick={() => {
+                                          setRelated(k, info.relatedHint || "");
+                                          setExpandedRelated(new Set(expandedRelated).add(k));
+                                        }}
+                                        style={{ padding: "4px 10px", background: "rgba(234,179,8,0.15)", border: "1px solid rgba(234,179,8,0.3)", borderRadius: 6, color: "#eab308", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+                                      >
+                                        Use this
+                                      </button>
+                                    </div>
+                                  )}
+                                  {!expanded ? (
+                                    <button
+                                      onClick={() => setExpandedRelated(new Set(expandedRelated).add(k))}
+                                      style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 11, cursor: "pointer", padding: 0 }}
+                                    >
+                                      + I have related experience ▸
+                                    </button>
+                                  ) : (
+                                    <textarea
+                                      value={relatedText}
+                                      onChange={e => setRelated(k, e.target.value)}
+                                      placeholder={`What did you do that's comparable to "${k}"? Be specific — this becomes a bullet.`}
+                                      rows={2}
+                                      style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 8, color: "#fff", fontSize: 12, fontFamily: "'DM Sans',sans-serif", lineHeight: 1.5, resize: "vertical", outline: "none" }}
+                                    />
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           );
                         })}
                       </div>
@@ -737,19 +866,35 @@ export function ResumeProClient() {
 
                     <div style={{ background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.06)", borderRadius: 12, padding: "16px 20px", marginBottom: 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                        <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>📈 Projected Optimized Score</span>
-                        <span style={{ color: projectedTotal >= 90 ? "#10b981" : projectedTotal >= 80 ? "#eab308" : "#ef4444", fontWeight: 800, fontSize: 20 }}>{projectedTotal}</span>
+                        <span style={{ color: "#fff", fontWeight: 700, fontSize: 14 }}>📈 Best honest score with these selections</span>
+                        <span style={{ color: ceiling >= targetScore ? "#10b981" : ceiling >= 80 ? "#eab308" : "#ef4444", fontWeight: 800, fontSize: 20 }}>{ceiling}</span>
                       </div>
                       <div style={{ height: 6, background: "rgba(255,255,255,0.06)", borderRadius: 3, marginBottom: 8 }}>
-                        <div style={{ height: 6, background: projectedTotal >= 90 ? "#10b981" : "#eab308", borderRadius: 3, width: `${projectedTotal}%`, transition: "width 0.4s ease" }} />
+                        <div style={{ height: 6, background: ceiling >= targetScore ? "#10b981" : "#eab308", borderRadius: 3, width: `${ceiling}%`, transition: "width 0.4s ease" }} />
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 6, fontSize: 11, color: "rgba(255,255,255,0.35)" }}>
                         <span>Current: {score}</span>
                         <span>
-                          {found.length + confirmedSkills.size} / {kwList.length} keywords confirmed
+                          <span style={{ color: "#8b5cf6" }}>{directCount} direct</span> · <span style={{ color: "#eab308" }}>{relatedCount} related</span> · {notAdded.length} not added · of {kwList.length}
                         </span>
-                        <span>Target: {targetScore}+</span>
+                        <span>Goal: {targetScore}+</span>
                       </div>
+                      {ceiling < targetScore ? (
+                        <div style={{ marginTop: 10, padding: "10px 12px", background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.15)", borderRadius: 8 }}>
+                          <p style={{ color: "rgba(234,179,8,0.9)", fontSize: 12, lineHeight: 1.55, margin: 0 }}>
+                            ⚠️ With what you&apos;ve confirmed, the honest ceiling is <strong>{ceiling}</strong>, not {targetScore}+. The optimizer will stop there rather than invent experience.
+                          </p>
+                          {notAdded.length > 0 && (
+                            <p style={{ color: "rgba(255,255,255,0.45)", fontSize: 11.5, lineHeight: 1.55, margin: "6px 0 0" }}>
+                              Holding the score back: {notAdded.join(", ")}. Confirm any you have, or add related experience, to raise the ceiling.
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <p style={{ color: "rgba(16,185,129,0.8)", fontSize: 12, marginTop: 8 }}>
+                          ✅ {targetScore}+ is reachable with only the skills you confirmed.
+                        </p>
+                      )}
                     </div>
 
                     <div style={{ textAlign: "center" }}>
@@ -771,13 +916,11 @@ export function ResumeProClient() {
                           boxShadow: "0 4px 24px rgba(99,102,241,0.3)",
                         }}
                       >
-                        {rewriting ? "⏳ Optimizing..." : `Optimize to ${targetScore}+ (${found.length + confirmedSkills.size}/${kwList.length} skills)`}
+                        {rewriting ? "⏳ Optimizing..." : `✨ Optimize — up to ${ceiling}/100`}
                       </button>
-                      {confirmedSkills.size === 0 && missing.length > 0 && (
-                        <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, marginTop: 8 }}>
-                          You can optimize without adding missing skills — your score may not reach {targetScore}+.
-                        </p>
-                      )}
+                      <p style={{ color: "rgba(255,255,255,0.3)", fontSize: 11, marginTop: 8 }}>
+                        Only confirmed and related skills are used. Nothing else gets added.
+                      </p>
                     </div>
                   </>
                 );
@@ -802,6 +945,56 @@ export function ResumeProClient() {
                     <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 11, textAlign: "center", margin: "-12px 0 12px" }}>
                       ✅ Deterministic score — same text will always get {verifiedScore.total}/100
                     </p>
+                  )}
+
+                  {verifiedScore && (
+                    verifiedScore.total >= targetScore ? (
+                      <div style={{ background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: 12, padding: "14px 18px", marginBottom: 10 }}>
+                        <div style={{ color: "#10b981", fontWeight: 700, fontSize: 13 }}>🎉 {verifiedScore.total}/100 — using only skills you confirmed</div>
+                      </div>
+                    ) : (
+                      <div style={{ background: "rgba(234,179,8,0.06)", border: "1px solid rgba(234,179,8,0.18)", borderRadius: 12, padding: "14px 18px", marginBottom: 10 }}>
+                        <div style={{ color: "#eab308", fontWeight: 700, fontSize: 13, marginBottom: 6 }}>
+                          Reached {verifiedScore.total}/100 — honest ceiling was {rewrite.ceiling}
+                        </div>
+                        <p style={{ color: "rgba(255,255,255,0.55)", fontSize: 12, lineHeight: 1.55, margin: 0 }}>
+                          {targetScore}+ isn&apos;t reachable with {kwList.length - rewrite.unaddressed.length}/{kwList.length} usable keywords, so the optimizer stopped at the ceiling instead of inventing experience.
+                          {rewrite.unaddressed.length > 0 && (
+                            <>
+                              {" "}
+                              Still missing (by your choice): <strong>{rewrite.unaddressed.join(", ")}</strong>. Go back to <button onClick={() => setTab("gap")} style={{ background: "none", border: "none", color: "#8b5cf6", cursor: "pointer", padding: 0, fontSize: 12, fontWeight: 600 }}>Skills Gap</button> to confirm any you have or add related experience.
+                            </>
+                          )}
+                        </p>
+                      </div>
+                    )
+                  )}
+
+                  {(rewrite.warnings || []).length > 0 && (
+                    <div style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.25)", borderRadius: 12, padding: "14px 18px", marginBottom: 10 }}>
+                      <div style={{ color: "#ef4444", fontWeight: 700, fontSize: 13, marginBottom: 6 }}>⚠️ Review before using</div>
+                      {rewrite.warnings.map((w, i) => (
+                        <div key={i} style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.5, paddingLeft: 10, borderLeft: "2px solid rgba(239,68,68,0.3)", marginBottom: 4 }}>
+                          {w}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {(rewrite.related || []).length > 0 && (
+                    <div style={{ background: "rgba(234,179,8,0.04)", border: "1px solid rgba(234,179,8,0.12)", borderRadius: 12, padding: "14px 18px", marginBottom: 10 }}>
+                      <div style={{ color: "#eab308", fontWeight: 700, fontSize: 13, marginBottom: 6 }}>🔗 Framed as related experience (not claimed directly)</div>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                        {rewrite.related.map((k, i) => (
+                          <Pill key={i} color="rgba(234,179,8,0.85)" bg="rgba(234,179,8,0.08)">
+                            ↔ {k}
+                          </Pill>
+                        ))}
+                      </div>
+                      <p style={{ color: "rgba(255,255,255,0.35)", fontSize: 11, marginTop: 8 }}>
+                        These appear in bullets or the summary with &quot;comparable to&quot; / &quot;transferable to&quot; wording, grounded in what you told us — never as a bare skill.
+                      </p>
+                    </div>
                   )}
 
                   {verifiedScore && (

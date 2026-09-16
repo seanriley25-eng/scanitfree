@@ -10,42 +10,81 @@ KEYWORDS: ${kwList.join(", ")}
 CONCISE — strings under 50 chars. Max 3 per array.
 JSON only: {"eye_test":{"impression":"<short>","red_flags":["<short>"],"strengths":["<short>"]},"job_match":{"match_pct":0,"matched":["<short>"],"gaps":["<short>"],"verdict":"<short>"},"top3_fixes":["<short>","<short>","<short>"]}`;
 
-export const makeRewriteSystem = (kwList: string[]) => `Elite resume writer. ${RECRUITER_INTEL}
+export interface RelatedSkill {
+  keyword: string;
+  experience: string;
+}
 
-STRUCTURAL RULES (will be checked by automated scorer):
+const list = (items: string[]) => (items.length ? items.map(k => `"${k}"`).join(", ") : "(none)");
+
+const honestyRules = (approved: string[], related: RelatedSkill[], declined: string[]) => `HONESTY RULES — non-negotiable. Violating any of these makes the output unusable:
+1. NEVER-ADD keywords: ${list(declined)}. These must not appear ANYWHERE — not in Skills, Summary, bullets, or certifications. The candidate does not have this experience. If one is already present, remove it.
+2. RELATED keywords may appear ONLY in Summary or bullets, and ONLY phrased as adjacent/transferable experience grounded in what the candidate actually did — e.g. "audit-trail and sign-off controls comparable to 21 CFR Part 11 requirements". NEVER list a RELATED keyword as a bare item in Skills. NEVER claim direct experience with it.
+${related.length ? related.map(r => `   - "${r.keyword}" — candidate's related experience: ${r.experience}`).join("\n") : "   (none)"}
+3. DIRECT keywords may be used freely, including in Skills: ${list(approved)}.
+4. PRESERVE FACTS. Keep every role (title, company, dates), the contact details, every education entry, and every certification exactly as in the source. Do not drop, rename, re-date, or add any of them. Rewrite only Summary, Skills, and bullet text.
+5. NUMBERS must come from the source resume or be conservative approximations of it ("10+", "dozens of", "four teams"). Do not invent precise percentages or counts the source does not support.`;
+
+export const makeRewriteSystem = (approved: string[], related: RelatedSkill[], declined: string[]) => `Elite resume writer. ${RECRUITER_INTEL}
+
+${honestyRules(approved, related, declined)}
+
+STRUCTURAL RULES (checked by automated scorer):
 1. SKILLS section: EXACTLY 10-12 items separated by " | ". Not more, not less.
-2. SUMMARY: EXACTLY 2 sentences. Under 280 chars total. Must contain 3+ keywords from list.
+2. SUMMARY: EXACTLY 2 sentences. Under 280 chars total. Include 3+ DIRECT or RELATED keywords.
 3. BULLETS: 5-7 per role. Every bullet starts with a power verb. Every bullet contains a number. NO bullet may be truncated or incomplete.
-4. Every keyword below must appear in Skills OR a bullet.
+4. Every DIRECT keyword must appear in Skills OR a bullet. Every RELATED keyword should appear in a bullet or the Summary with adjacent framing.
 5. Section order: PROFESSIONAL SUMMARY, SKILLS, EXPERIENCE, EDUCATION, CERTIFICATIONS
-
-KEYWORDS TO INJECT (all must appear):
-${kwList.map((k, i) => `${i + 1}. "${k}"`).join("\n")}
+6. Include EVERY role from the source resume, in the same order.
 
 CRITICAL: Respond with ONLY a JSON object. No commentary, no explanation, no notes before or after. Start your response with { and end with }.
 JSON format:
-{"name":"","email":"","phone":"","location":"","linkedin":"","summary":"<2 sentences, <280 chars, 3+ keywords>","skills":["<exactly 10-12 items>"],"experience":[{"title":"","company":"","dates":"","bullets":["<5-7, verb+action+number, no truncation>"]}],"education":[{"degree":"","school":"","year":""}],"certifications":[],"changes":["<change>"]}`;
+{"name":"","email":"","phone":"","location":"","linkedin":"","summary":"<2 sentences, <280 chars>","skills":["<exactly 10-12 items>"],"experience":[{"title":"","company":"","dates":"","bullets":["<5-7, verb+action+number, no truncation>"]}],"education":[{"degree":"","school":"","year":""}],"certifications":[],"changes":["<change>"]}`;
 
-export const makeBoostSystem = (kwList: string[], scoreBreakdown: ScoreResult, target = 90) => `Resume BOOST. Current score: ${scoreBreakdown.total}/100. Need ${target}+.
+export const makeBoostSystem = (
+  approved: string[],
+  related: RelatedSkill[],
+  declined: string[],
+  scoreBreakdown: ScoreResult,
+  usableMissing: string[],
+  target: number
+) => `Resume BOOST. Current score: ${scoreBreakdown.total}/100. Target: ${target}+.
+
+${honestyRules(approved, related, declined)}
 
 EXACT ISSUES TO FIX (automated scorer found these):
 ${scoreBreakdown.summary.issues.map(i => `SUMMARY: ${i}`).join("\n")}
 ${scoreBreakdown.skills.issues.map(i => `SKILLS: ${i}`).join("\n")}
 ${scoreBreakdown.bullets.issues.map(i => `BULLETS: ${i}`).join("\n")}
 ${scoreBreakdown.format.issues.map(i => `FORMAT: ${i}`).join("\n")}
-MISSING KEYWORDS: ${scoreBreakdown.ats.missing.join(", ")}
+USABLE KEYWORDS STILL MISSING: ${usableMissing.length ? usableMissing.join(", ") : "(none — every usable keyword is already present)"}
 
 FIX EVERY ISSUE:
 - Skills must be EXACTLY 10-12 items
 - Summary must be <280 chars, exactly 2 sentences
 - Every bullet must end with a period and contain a number
-- Every missing keyword must be added to Skills or a bullet
+- Add each USABLE missing keyword (DIRECT → Skills or a bullet; RELATED → bullet/Summary with adjacent framing only)
 - No truncated bullets
-
-KEYWORDS: ${kwList.map((k, i) => `${i + 1}."${k}"`).join(", ")}
+- Do NOT touch roles, dates, contact details, education, or certifications
 
 CRITICAL: Respond with ONLY a JSON object. No commentary. Start with { end with }.
 Format: {"name":"","email":"","phone":"","location":"","linkedin":"","summary":"","skills":[],"experience":[{"title":"","company":"","dates":"","bullets":[]}],"education":[{"degree":"","school":"","year":""}],"certifications":[],"changes":["<fix>"]}`;
+
+export const makeScrubSystem = (leaked: string[]) => `Resume editor. The following terms must be REMOVED from the resume entirely — the candidate does not have this experience: ${list(leaked)}.
+Rewrite any sentence or skill that contains them so it no longer does, preserving the underlying true accomplishment. Change nothing else. Keep every role, date, contact detail, education entry, and certification exactly as given.
+CRITICAL: Respond with ONLY the full resume JSON object in the same shape you received. Start with { end with }.`;
+
+export const makeExplainGapsSystem = (missing: string[]) => `Career coach. The candidate's resume lacks these job-description keywords. For EACH keyword: explain in one plain-English sentence what it actually means (assume the reader has never heard the term), then examine the RESUME for genuinely related or transferable experience.
+
+Rules:
+- "relatedHint" must cite something specific from the resume and explain why it's adjacent. If nothing is plausibly related, set it to null. Do not stretch.
+- Never suggest the candidate claim the skill. Only point out how existing work is ADJACENT to it.
+- If a keyword is an acronym or expansion of another keyword in the list, say so in "meaning".
+- Keep each string under 220 characters.
+
+JSON only:
+{"gaps":[{"keyword":"<exact keyword as given>","meaning":"<one sentence>","relatedHint":"<specific adjacent experience from the resume, or null>"}]}
+KEYWORDS: ${missing.join(" | ")}`;
 
 export interface CompanyTools {
   name: string;
