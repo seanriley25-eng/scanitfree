@@ -4,6 +4,8 @@ import {
   scoreResume,
   resumeToText,
   fixResume,
+  maxAchievableScore,
+  containsTerm,
   type ScoreResult,
   type StructuredResume,
 } from "@/lib/resume-scorer";
@@ -12,6 +14,9 @@ import {
   makeFeedbackSystem,
   makeRewriteSystem,
   makeBoostSystem,
+  makeScrubSystem,
+  makeExplainGapsSystem,
+  type RelatedSkill,
 } from "@/lib/resume-prompts";
 
 const API_KEY = process.env.ANTHROPIC_API_KEY || "";
@@ -21,6 +26,7 @@ const MAX_TOKENS = 4096;
 const RESUME_CHAR_LIMIT = 8000;
 const JD_CHAR_LIMIT = 4000;
 const PDF_SIZE_LIMIT = 10 * 1024 * 1024;
+const MAX_BOOST_PASSES = 3;
 
 async function callClaude(system: string, userContent: string | object[]): Promise<any> {
   if (!API_KEY) throw new Error("Server not configured");
@@ -112,6 +118,55 @@ function buildCompanyContext(companyName?: string, toolsContext?: string): strin
   } Use tools and terminology appropriate for this company. Do NOT substitute with tools from competing ecosystems (e.g. don't use Jira for Microsoft, don't use Azure for Google).`;
 }
 
+/** Terms from `terms` that appear anywhere in the flattened resume. */
+function findLeaks(r: StructuredResume, terms: string[]): string[] {
+  const txt = resumeToText(r);
+  return terms.filter(t => containsTerm(txt, t));
+}
+
+/** Related keywords are allowed in bullets/summary but never as a bare Skills item. */
+function relatedInSkills(r: StructuredResume, related: string[]): string[] {
+  const skills = (r.skills || []).map(s => s.toLowerCase().trim());
+  return related.filter(k => skills.some(s => s === k.toLowerCase()));
+}
+
+/** Pull contact details straight from the source text so a hallucinated email/phone can be overwritten. */
+function sourceContact(text: string): { email?: string; phone?: string } {
+  const email = text.match(/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i)?.[0];
+  const phone = text.match(/\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}/)?.[0];
+  return { email, phone };
+}
+
+/** Rough count of dated roles in the source — used to warn if the rewrite dropped one. */
+function countSourceRoles(text: string): number {
+  const m = text.match(/\b(19|20)\d{2}\s*[–—-]\s*((19|20)\d{2}|present|current)\b/gi);
+  return m ? m.length : 0;
+}
+
+/** Copy immutable facts from `from` onto `to`. Experience is restored wholesale if the pass changed the role count. */
+function preserveFacts(to: StructuredResume, from: StructuredResume): StructuredResume {
+  to.name = from.name;
+  to.email = from.email;
+  to.phone = from.phone;
+  to.location = from.location;
+  to.linkedin = from.linkedin;
+  to.education = from.education;
+  to.certifications = from.certifications;
+  const fromExp = from.experience || [];
+  const toExp = to.experience || [];
+  if (toExp.length !== fromExp.length) {
+    to.experience = fromExp;
+  } else {
+    to.experience = toExp.map((job, i) => ({
+      ...job,
+      title: fromExp[i].title,
+      company: fromExp[i].company,
+      dates: fromExp[i].dates,
+    }));
+  }
+  return to;
+}
+
 export async function POST(req: NextRequest) {
   try {
     const ip =
@@ -138,7 +193,6 @@ export async function POST(req: NextRequest) {
     if (action === "pdf_extract") {
       const base64: string = body.base64;
       if (!base64) return NextResponse.json({ error: "Missing base64" }, { status: 400 });
-      // Rough size check — base64 is ~4/3 the byte size
       if (base64.length > (PDF_SIZE_LIMIT * 4) / 3) {
         return NextResponse.json({ error: "PDF too large. Max 10MB." }, { status: 400 });
       }
@@ -160,20 +214,42 @@ export async function POST(req: NextRequest) {
       const jd: string = (body.jd || "").slice(0, JD_CHAR_LIMIT);
       const kwList: string[] = Array.isArray(body.kwList) ? body.kwList : [];
       if (!resume.trim() || !jd.trim()) return NextResponse.json({ error: "Missing resume or JD" }, { status: 400 });
-      const fb = await callClaude(
-        makeFeedbackSystem(kwList),
-        `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`
-      );
+      const fb = await callClaude(makeFeedbackSystem(kwList), `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}`);
       return NextResponse.json(fb);
     }
 
-    // ── Full rewrite + boost loop ──────────────────────────────────────────
+    // ── Explain missing keywords + find adjacent experience ────────────────
+    if (action === "explain_gaps") {
+      const resume: string = (body.resume || "").slice(0, RESUME_CHAR_LIMIT);
+      const missing: string[] = Array.isArray(body.missing) ? body.missing.filter((k: unknown) => typeof k === "string").slice(0, 30) : [];
+      if (!resume.trim() || missing.length === 0) {
+        return NextResponse.json({ error: "Missing resume or keywords" }, { status: 400 });
+      }
+      const r = await callClaude(makeExplainGapsSystem(missing), `RESUME:\n${resume}`);
+      const gaps = Array.isArray(r.gaps)
+        ? r.gaps
+            .filter((g: any) => g && typeof g.keyword === "string")
+            .map((g: any) => ({
+              keyword: g.keyword,
+              meaning: typeof g.meaning === "string" ? g.meaning : "",
+              relatedHint: typeof g.relatedHint === "string" && g.relatedHint.trim() ? g.relatedHint : null,
+            }))
+        : [];
+      return NextResponse.json({ gaps });
+    }
+
+    // ── Full rewrite + boost loop, bounded by the honest ceiling ──────────
     if (action === "rewrite") {
       const resume: string = (body.resume || "").slice(0, RESUME_CHAR_LIMIT);
       const jd: string = (body.jd || "").slice(0, JD_CHAR_LIMIT);
       const kwList: string[] = Array.isArray(body.kwList) ? body.kwList : [];
       const scoreResult: ScoreResult = body.scoreResult;
       const confirmedSkills: string[] = Array.isArray(body.confirmedSkills) ? body.confirmedSkills : [];
+      const relatedInput: RelatedSkill[] = Array.isArray(body.relatedSkills)
+        ? body.relatedSkills.filter(
+            (r: any) => r && typeof r.keyword === "string" && typeof r.experience === "string" && r.experience.trim()
+          )
+        : [];
       const companyName: string = (body.companyName || "").slice(0, 100);
       const toolsContext: string = (body.toolsContext || "").slice(0, 1000);
 
@@ -183,20 +259,27 @@ export async function POST(req: NextRequest) {
 
       const found = new Set((scoreResult.ats.found || []).map((k: string) => k.toLowerCase()));
       const confirmedSet = new Set(confirmedSkills);
-      const approvedKwList = kwList.filter(
-        k => found.has(k.toLowerCase()) || confirmedSet.has(k)
-      );
-      const declinedKw = kwList.filter(
-        k => !found.has(k.toLowerCase()) && !confirmedSet.has(k)
-      );
+      const approved = kwList.filter(k => found.has(k.toLowerCase()) || confirmedSet.has(k));
+      const approvedSet = new Set(approved);
+      const related = relatedInput
+        .filter(r => kwList.includes(r.keyword) && !approvedSet.has(r.keyword))
+        .map(r => ({ keyword: r.keyword, experience: r.experience.trim().slice(0, 400) }));
+      const relatedKw = related.map(r => r.keyword);
+      const relatedSet = new Set(relatedKw);
+      const declined = kwList.filter(k => !approvedSet.has(k) && !relatedSet.has(k));
+      const usableSet = new Set([...approved, ...relatedKw]);
+
+      const ceiling = maxAchievableScore(approved.length, related.length, kwList.length);
+      const desiredTarget = scoreResult.total >= 80 ? 93 : 90;
+      const target = Math.min(desiredTarget, ceiling);
       const compCtx = buildCompanyContext(companyName, toolsContext);
+      const contact = sourceContact(resume);
+      const sourceRoles = countSourceRoles(resume);
 
       // Step 1: initial rewrite
       let cur: StructuredResume = await callClaude(
-        makeRewriteSystem(approvedKwList),
-        `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}${compCtx}\n\nCurrent score:${scoreResult.total}\nAPPROVED keywords to inject:${approvedKwList.join(", ")}\n${
-          declinedKw.length > 0 ? `\nDO NOT add these keywords (user does not have these skills): ${declinedKw.join(", ")}` : ""
-        }\nIssues:${[
+        makeRewriteSystem(approved, related, declined),
+        `JOB DESCRIPTION:\n${jd}\n\nRESUME:\n${resume}${compCtx}\n\nCurrent score: ${scoreResult.total}. Target: ${target}.\nIssues: ${[
           ...scoreResult.summary.issues,
           ...scoreResult.skills.issues,
           ...scoreResult.bullets.issues,
@@ -204,28 +287,61 @@ export async function POST(req: NextRequest) {
         ].join("; ")}`
       );
       cur = fixResume(cur);
+      if (contact.email && !containsTerm(resume, cur.email || " ")) cur.email = contact.email;
+      if (contact.phone && cur.phone && !resume.includes(cur.phone.replace(/\D/g, "").slice(-4))) cur.phone = contact.phone;
 
-      // Step 2: verify + boost loop
-      let allChanges: string[] = [...(cur.changes || [])];
+      const allChanges: string[] = [...(cur.changes || [])];
       let pass = 1;
       let txt = resumeToText(cur);
       let vScore = scoreResume(txt, kwList);
-      const boostTarget = scoreResult.total >= 80 ? 93 : 90;
 
-      while (vScore.total < boostTarget && pass < 4) {
+      // Step 2: boost loop — only chases keywords the candidate can honestly use
+      while (vScore.total < target - 1 && pass <= MAX_BOOST_PASSES) {
         pass++;
+        const usableMissing = vScore.ats.missing.filter(k => usableSet.has(k));
         try {
           const boosted: StructuredResume = await callClaude(
-            makeBoostSystem(approvedKwList, vScore, boostTarget),
-            `JOB DESCRIPTION:\n${jd}${compCtx}\n\nCURRENT RESUME:\n${JSON.stringify(cur).slice(0, 2000)}`
+            makeBoostSystem(approved, related, declined, vScore, usableMissing, target),
+            `JOB DESCRIPTION:\n${jd}${compCtx}\n\nCURRENT RESUME (JSON):\n${JSON.stringify(cur)}`
           );
-          cur = fixResume(boosted);
-          allChanges = [...allChanges, ...(boosted.changes || [])];
+          cur = preserveFacts(fixResume(boosted), cur);
+          allChanges.push(...(boosted.changes || []));
           txt = resumeToText(cur);
           vScore = scoreResume(txt, kwList);
         } catch {
           break;
         }
+      }
+
+      // Step 3: safety net — one scrub pass if any declined term slipped through
+      let leaked = findLeaks(cur, declined);
+      let relatedAsSkill = relatedInSkills(cur, relatedKw);
+      if (leaked.length > 0 || relatedAsSkill.length > 0) {
+        try {
+          const scrubbed: StructuredResume = await callClaude(
+            makeScrubSystem([...leaked, ...relatedAsSkill.map(k => `${k} (as a bare Skills item — may stay in bullets with adjacent framing)`)]),
+            JSON.stringify(cur)
+          );
+          cur = preserveFacts(fixResume(scrubbed), cur);
+          txt = resumeToText(cur);
+          vScore = scoreResume(txt, kwList);
+          leaked = findLeaks(cur, declined);
+          relatedAsSkill = relatedInSkills(cur, relatedKw);
+        } catch {
+          /* report whatever is left */
+        }
+      }
+
+      const outputRoles = (cur.experience || []).length;
+      const warnings: string[] = [];
+      if (sourceRoles > 0 && outputRoles < sourceRoles) {
+        warnings.push(`Your resume lists ${sourceRoles} dated roles but the rewrite has ${outputRoles} — review before using.`);
+      }
+      if (leaked.length > 0) {
+        warnings.push(`These declined terms still appear and should be removed by hand: ${leaked.join(", ")}.`);
+      }
+      if (relatedAsSkill.length > 0) {
+        warnings.push(`Related keywords listed as bare skills (should only appear with adjacent framing): ${relatedAsSkill.join(", ")}.`);
       }
 
       return NextResponse.json({
@@ -234,7 +350,12 @@ export async function POST(req: NextRequest) {
         pass,
         verifiedScore: vScore,
         verifiedText: txt,
-        declined: declinedKw,
+        declined,
+        related: relatedKw,
+        ceiling,
+        target,
+        unaddressed: vScore.ats.missing.filter(k => !usableSet.has(k)),
+        warnings,
       });
     }
 

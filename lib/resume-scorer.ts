@@ -216,6 +216,36 @@ export function scoreResume(text: string, kwList: string[]): ScoreResult {
   return result;
 }
 
+/**
+ * Best score a perfect rewrite can reach given how many JD keywords the candidate
+ * can honestly use. Mirrors scoreResume's formula with every non-keyword component maxed.
+ * Related keywords never go in the Skills section, so they count toward everything except skills.
+ */
+export function maxAchievableScore(directCount: number, relatedCount: number, totalKw: number): number {
+  const total = Math.max(totalKw, 1);
+  const nAll = Math.min(directCount + relatedCount, total);
+  const nSkills = Math.min(directCount, total);
+
+  const sumTier = nAll >= 3 ? 3 : nAll >= 2 ? 2 : nAll >= 1 ? 1 : 0;
+  const summary = Math.min(15, 9 + sumTier + Math.min(3, nAll));
+
+  const skills = Math.min(20, 10 + Math.round((nSkills / total) * 10));
+
+  const bulletsRaw = 25 + Math.min(5, Math.round(Math.min(nAll / 6, 1) * 5));
+  const bullets = Math.min(35, Math.round((bulletsRaw * 35) / 30));
+
+  const ats = Math.round((nAll / total) * 15);
+  const format = 15;
+
+  return Math.min(100, summary + skills + bullets + ats + format);
+}
+
+/** Case-insensitive whole-term check — "SQL" must not match inside "MySQL". */
+export function containsTerm(text: string, term: string): boolean {
+  const esc = term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(^|[^a-z0-9])${esc}([^a-z0-9]|$)`, "i").test(text);
+}
+
 /** Flatten a structured resume back into plain text so the scorer can grade it. */
 export function resumeToText(r: StructuredResume): string {
   const sk = r.skills || [];
