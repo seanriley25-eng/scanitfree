@@ -13,6 +13,7 @@ const staticRoutes: RouteConfig[] = [
   { path: '/', changeFrequency: 'weekly', priority: 1.0 },
   { path: '/tools/food-safety', changeFrequency: 'monthly', priority: 0.9 },
   { path: '/tools/resume-reviewer', changeFrequency: 'monthly', priority: 0.9 },
+  { path: '/tools/resume-reviewer-pro', changeFrequency: 'monthly', priority: 0.9 },
   { path: '/tools/lease-scanner', changeFrequency: 'monthly', priority: 0.9 },
   { path: '/blog', changeFrequency: 'weekly', priority: 0.8 },
   { path: '/about', changeFrequency: 'monthly', priority: 0.6 },
