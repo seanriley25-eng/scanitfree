@@ -173,9 +173,8 @@ export function scoreResume(text: string, kwList: string[]): ScoreResult {
       const kwInBullets = kwList.filter(k => bulletText.includes(k.toLowerCase()));
       bu.score += Math.min(5, Math.round(Math.min(kwInBullets.length / 6, 1) * 5));
 
-      let vagueCount = 0;
-      VAGUE_WORDS.forEach(v => { if (lower.includes(v)) vagueCount++; });
-      if (vagueCount > 0) { bu.score -= vagueCount; bu.issues.push(`${vagueCount} vague word(s)`); }
+      const vagueFound = VAGUE_WORDS.filter(v => lower.includes(v));
+      if (vagueFound.length > 0) { bu.score -= vagueFound.length; bu.issues.push(`${vagueFound.length} vague word(s): ${vagueFound.join(", ")}`); }
     }
     bu.score = Math.max(0, Math.min(35, Math.round(bu.score * 35 / 30)));
   }
