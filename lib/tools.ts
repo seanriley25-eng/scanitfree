@@ -42,6 +42,20 @@ export const TOOLS: Tool[] = [
       "Upload your resume as PDF or DOCX, or paste the text. Get an instant AI review with ATS keyword match, job description matching, scoring, and actionable improvement suggestions. No signup required.",
   },
   {
+    id: "resume-reviewer-pro",
+    name: "Resume Reviewer Pro",
+    desc: "Deterministic ATS score + AI rewrite loop until you hit 90+. Add company context (Microsoft, Google, etc.) so bullets use the right tools.",
+    icon: "✨",
+    category: "Career",
+    status: "live",
+    searchVolume: "40.5K/mo",
+    cta: "Optimize to 90+",
+    href: "/tools/resume-reviewer-pro",
+    seoTitle: "Resume Reviewer Pro — Deterministic ATS Score + 90+ AI Rewrite",
+    seoDesc:
+      "Get a deterministic ATS score (same resume always gets the same score), then optimize to 90+ with an AI rewrite tailored to your target company. Free, no signup.",
+  },
+  {
     id: "lease-scanner",
     name: "Lease Red Flag Scanner",
     desc: "Upload your lease PDF or paste the text, select your state, and get jurisdiction-aware AI analysis of red flags",
