@@ -12,7 +12,7 @@ export default function Home() {
           100% FREE · NO SIGNUP · AD-SUPPORTED
         </div>
         <div className="inline-block bg-accent-dim rounded-full px-4 py-1 text-xs font-mono text-accent tracking-wide mb-5">
-          6 TOOLS · 36 ARTICLES · POWERED BY CLAUDE
+          7 TOOLS · 36 ARTICLES · POWERED BY CLAUDE
         </div>
         <h1 className="font-display text-4xl md:text-6xl font-normal text-[var(--text)] leading-tight mb-4">
           AI tools that actually{" "}
@@ -32,59 +32,66 @@ export default function Home() {
         <AdSlot size="leaderboard" />
       </div>
 
-      {/* Sample output preview */}
+      {/* Sample output preview — Resume Reviewer Pro */}
       <section className="max-w-[720px] mx-auto px-6 mb-12">
         <h2 className="font-display text-2xl text-[var(--text)] mb-1">See it in action</h2>
-        <p className="text-muted text-sm mb-5">Real-looking output — try it yourself below.</p>
+        <p className="text-muted text-sm mb-5">Deterministic ATS score + AI rewrite until 90+.</p>
         <div className="bg-surface border border-border rounded-2xl p-6 animate-fade-up">
           {/* Header */}
-          <div className="flex items-center gap-2 mb-4">
-            <span className="text-xl">🛡️</span>
-            <span className="font-heading text-sm font-semibold text-[var(--text)]">Food Safety Scanner</span>
-            <span className="ml-auto font-mono text-xs text-muted">Pringles Sour Cream &amp; Onion</span>
+          <div className="flex items-center gap-2 mb-5">
+            <span className="text-xl">✨</span>
+            <span className="font-heading text-sm font-semibold text-[var(--text)]">Resume Reviewer Pro</span>
+            <span className="ml-auto font-mono text-xs text-muted">Senior Software Engineer @ Acme</span>
           </div>
 
-          {/* Score row */}
-          <div className="flex items-center gap-4 mb-5">
-            <div className="w-16 h-16 rounded-full bg-yellow-600 flex flex-col items-center justify-center flex-shrink-0">
-              <span className="text-white font-extrabold text-xl font-heading">B</span>
-              <span className="text-white/70 text-[10px]">74/100</span>
+          {/* Before → After score */}
+          <div className="flex items-center justify-center gap-6 sm:gap-10 mb-6 py-3">
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-orange-600 flex flex-col items-center justify-center flex-shrink-0">
+                <span className="text-white font-extrabold text-xl font-heading">C</span>
+                <span className="text-white/70 text-[10px]">68/100</span>
+              </div>
+              <span className="text-muted text-[11px] mt-1.5 font-mono">Original</span>
             </div>
-            <div>
-              <h3 className="font-heading text-base text-[var(--text)]">Safety Score: 74/100</h3>
-              <p className="text-muted text-xs mt-0.5">Based on FDA data, allergen databases, and safety research</p>
+            <span className="text-2xl text-muted">→</span>
+            <div className="flex flex-col items-center">
+              <div className="w-16 h-16 rounded-full bg-green-600 flex flex-col items-center justify-center flex-shrink-0">
+                <span className="text-white font-extrabold text-xl font-heading">A</span>
+                <span className="text-white/70 text-[10px]">92/100</span>
+              </div>
+              <span className="text-green-500 text-[11px] mt-1.5 font-mono font-bold">+24 · Optimized</span>
             </div>
           </div>
 
-          {/* Flags */}
-          <div className="flex items-start gap-2.5 p-3 mb-2 rounded-lg bg-yellow-500/10 border-l-[3px] border-l-yellow-500">
-            <span className="text-base mt-0.5">🟡</span>
+          {/* Improvement rows */}
+          <div className="flex items-start gap-2.5 p-3 mb-2 rounded-lg bg-green-500/10 border-l-[3px] border-l-green-500">
+            <span className="text-base mt-0.5">✓</span>
             <span className="text-[var(--text)] text-sm leading-relaxed">
-              Contains artificial flavors (Disodium Inosinate &amp; Guanylate) — flavor enhancers derived from animal sources, may be unsuitable for vegetarians.
+              Added quantified metrics to 6 bullets — 79% of recruiters want numbers.
             </span>
           </div>
-          <div className="flex items-start gap-2.5 p-3 mb-2 rounded-lg bg-yellow-500/10 border-l-[3px] border-l-yellow-500">
-            <span className="text-base mt-0.5">🟡</span>
+          <div className="flex items-start gap-2.5 p-3 mb-2 rounded-lg bg-green-500/10 border-l-[3px] border-l-green-500">
+            <span className="text-base mt-0.5">✓</span>
             <span className="text-[var(--text)] text-sm leading-relaxed">
-              Yellow 5 &amp; Yellow 6 — synthetic dyes flagged by EFSA; EU products carry a warning label. Some studies link them to hyperactivity in children.
+              Injected 4 missing ATS keywords — Kubernetes, gRPC, distributed systems, observability.
             </span>
           </div>
-          <div className="flex items-start gap-2.5 p-3 mb-2 rounded-lg bg-blue-500/10 border-l-[3px] border-l-blue-500">
-            <span className="text-base mt-0.5">🔵</span>
+          <div className="flex items-start gap-2.5 p-3 mb-2 rounded-lg bg-green-500/10 border-l-[3px] border-l-green-500">
+            <span className="text-base mt-0.5">✓</span>
             <span className="text-[var(--text)] text-sm leading-relaxed">
-              No known major allergens beyond milk derivatives — safe for most allergen-restricted diets.
+              Skills condensed from 27 to 12 — hits the 6-second recruiter scan window.
             </span>
           </div>
 
-          <p className="text-muted text-xs mt-4 italic">Example output — try your own below.</p>
+          <p className="text-muted text-xs mt-4 italic">Deterministic score — same resume + JD always gets 92/100.</p>
         </div>
 
         <div className="mt-4">
           <Link
-            href="/tools/food-safety"
+            href="/tools/resume-reviewer-pro"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-accent text-white font-heading font-semibold text-sm hover:brightness-110 transition-all no-underline"
           >
-            Try the Food Safety Scanner →
+            Try Resume Reviewer Pro →
           </Link>
         </div>
       </section>
