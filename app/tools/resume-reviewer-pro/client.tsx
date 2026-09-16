@@ -209,6 +209,7 @@ export function ResumeProClient() {
   const [expandedRelated, setExpandedRelated] = useState<Set<string>>(new Set());
   const [gapInfo, setGapInfo] = useState<Record<string, GapInfo>>({});
   const [explaining, setExplaining] = useState(false);
+  const [explainTried, setExplainTried] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const setRelated = (k: string, experience: string) => {
@@ -305,6 +306,7 @@ export function ResumeProClient() {
     setRelatedSkills(new Map());
     setExpandedRelated(new Set());
     setGapInfo({});
+    setExplainTried(false);
     setTab("scan");
     setError(null);
     try {
@@ -336,6 +338,7 @@ export function ResumeProClient() {
     setRelatedSkills(new Map());
     setExpandedRelated(new Set());
     setGapInfo({});
+    setExplainTried(false);
     setTab("scan");
     setError(null);
     try {
@@ -409,6 +412,7 @@ export function ResumeProClient() {
 
   const doExplainGaps = async () => {
     if (!scoreResult || scoreResult.ats.missing.length === 0) return;
+    setExplainTried(true);
     setExplaining(true);
     setError(null);
     try {
@@ -595,7 +599,11 @@ export function ResumeProClient() {
               return (
                 <button
                   key={t.id}
-                  onClick={() => !dis && setTab(t.id as any)}
+                  onClick={() => {
+                    if (dis) return;
+                    setTab(t.id as any);
+                    if (t.id === "gap" && !explainTried && !explaining) doExplainGaps();
+                  }}
                   style={{
                     flex: 1,
                     padding: "10px",
@@ -776,28 +784,23 @@ export function ResumeProClient() {
                         For each one: check it if you <strong>actually have</strong> it, or add <strong>related experience</strong> if you did something comparable. Anything left blank is never added — the optimizer works around it.
                       </p>
                       {missing.length > 0 && (
-                        <button
-                          onClick={doExplainGaps}
-                          disabled={explaining}
-                          style={{
-                            width: "100%",
-                            padding: "10px 14px",
-                            marginBottom: 10,
-                            background: hasGapInfo ? "rgba(255,255,255,0.04)" : "rgba(99,102,241,0.12)",
-                            border: `1px solid ${hasGapInfo ? "rgba(255,255,255,0.08)" : "rgba(99,102,241,0.3)"}`,
-                            borderRadius: 10,
-                            color: hasGapInfo ? "rgba(255,255,255,0.5)" : "#8b5cf6",
-                            fontSize: 12.5,
-                            fontWeight: 600,
-                            cursor: explaining ? "wait" : "pointer",
-                          }}
-                        >
-                          {explaining
-                            ? "⏳ Reading your resume for related experience..."
-                            : hasGapInfo
-                              ? "🔄 Re-analyze related experience"
-                              : "💡 Explain these terms & find related experience in my resume"}
-                        </button>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, marginBottom: 10, fontSize: 11.5, color: "rgba(255,255,255,0.4)" }}>
+                          <span>
+                            {explaining
+                              ? "⏳ Looking up what each term means and checking your resume for related experience…"
+                              : hasGapInfo
+                                ? "💡 Definitions and related-experience hints below are based on your resume."
+                                : "Couldn't load definitions."}
+                          </span>
+                          {!explaining && (
+                            <button
+                              onClick={doExplainGaps}
+                              style={{ padding: "5px 10px", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 6, color: "rgba(255,255,255,0.55)", fontSize: 11, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                            >
+                              {hasGapInfo ? "🔄 Re-analyze" : "Retry"}
+                            </button>
+                          )}
+                        </div>
                       )}
                       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                         {missing.map((k, i) => {
@@ -821,9 +824,14 @@ export function ResumeProClient() {
                                 {checked && <span style={{ marginLeft: "auto", fontSize: 10, color: "#8b5cf6", fontWeight: 600, whiteSpace: "nowrap" }}>WILL BE ADDED</span>}
                                 {isRelated && <span style={{ marginLeft: "auto", fontSize: 10, color: "#eab308", fontWeight: 600, whiteSpace: "nowrap" }}>RELATED · ADJACENT FRAMING</span>}
                               </label>
-                              {info?.meaning && (
-                                <div style={{ color: "rgba(255,255,255,0.45)", fontSize: 11.5, lineHeight: 1.5, marginTop: 6, paddingLeft: 28 }}>{info.meaning}</div>
-                              )}
+                              {info?.meaning ? (
+                                <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 12, lineHeight: 1.5, marginTop: 6, paddingLeft: 28 }}>
+                                  <span style={{ color: "rgba(255,255,255,0.35)", fontSize: 10.5, fontWeight: 700, letterSpacing: 0.6, textTransform: "uppercase", marginRight: 6 }}>What it is</span>
+                                  {info.meaning}
+                                </div>
+                              ) : explaining ? (
+                                <div style={{ color: "rgba(255,255,255,0.3)", fontSize: 11.5, fontStyle: "italic", marginTop: 6, paddingLeft: 28 }}>Looking up what this means…</div>
+                              ) : null}
                               {!checked && (
                                 <div style={{ paddingLeft: 28, marginTop: 6 }}>
                                   {info?.relatedHint && !isRelated && (
@@ -845,7 +853,7 @@ export function ResumeProClient() {
                                       onClick={() => setExpandedRelated(new Set(expandedRelated).add(k))}
                                       style={{ background: "none", border: "none", color: "rgba(255,255,255,0.35)", fontSize: 11, cursor: "pointer", padding: 0 }}
                                     >
-                                      + I have related experience ▸
+                                      + Add related experience ▸
                                     </button>
                                   ) : (
                                     <textarea
