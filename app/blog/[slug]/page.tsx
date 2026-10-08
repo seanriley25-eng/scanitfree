@@ -3,28 +3,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ARTICLES, getArticleBySlug, getRelatedArticles } from "@/lib/articles";
 
-// Dynamic import map for article content components
-const CONTENT_MAP: Record<string, () => Promise<{ default: React.ComponentType }>> = {
-  'lease-red-flags': () => import('@/content/articles/lease-red-flags'),
-  'beat-ats-resume-filters': () => import('@/content/articles/beat-ats-resume-filters'),
-  'fda-food-recalls-explained': () => import('@/content/articles/fda-food-recalls-explained'),
-  'security-deposit-laws': () => import('@/content/articles/security-deposit-laws'),
-  'resume-keywords': () => import('@/content/articles/resume-keywords'),
-  'what-is-bha-in-food': () => import('@/content/articles/what-is-bha-in-food'),
-  'food-allergens-label-reading': () => import('@/content/articles/food-allergens-label-reading'),
-  'food-dyes-safety': () => import('@/content/articles/food-dyes-safety'),
-  'resume-bullet-examples': () => import('@/content/articles/resume-bullet-examples'),
-  'hard-skills-vs-soft-skills': () => import('@/content/articles/hard-skills-vs-soft-skills'),
-  'get-security-deposit-back': () => import('@/content/articles/get-security-deposit-back'),
-  'joint-and-several-liability': () => import('@/content/articles/joint-and-several-liability'),
-  'natural-vs-organic-food-labels': () => import('@/content/articles/natural-vs-organic-food-labels'),
-  'how-to-read-nutrition-label': () => import('@/content/articles/how-to-read-nutrition-label'),
-  'how-long-should-resume-be': () => import('@/content/articles/how-long-should-resume-be'),
-  'how-to-write-resume-summary': () => import('@/content/articles/how-to-write-resume-summary'),
-  'can-landlord-raise-rent-mid-lease': () => import('@/content/articles/can-landlord-raise-rent-mid-lease'),
-  'landlord-wont-make-repairs': () => import('@/content/articles/landlord-wont-make-repairs'),
-};
-
 export function generateStaticParams() {
   return ARTICLES.map((article) => ({ slug: article.slug }));
 }
@@ -50,10 +28,11 @@ export default async function BlogPost({ params }: { params: { slug: string } })
   const article = getArticleBySlug(params.slug);
   if (!article) notFound();
 
-  const loader = CONTENT_MAP[params.slug];
-  if (!loader) notFound();
-
-  const { default: Content } = await loader();
+  // Webpack bundles every file matching this template, so a new article only
+  // needs a lib/articles.ts entry. scripts/check-articles.mjs guards the pair.
+  const { default: Content } = (await import(
+    `@/content/articles/${article.slug}`
+  )) as { default: React.ComponentType };
   const related = getRelatedArticles(article);
 
   return (
