@@ -166,3 +166,18 @@ export const TOOLS: Tool[] = [
 ];
 
 export const CATEGORIES = ["All", "Health", "Career", "Legal", "Privacy"];
+
+export const LIVE_TOOLS: Tool[] = TOOLS.filter((t) => t.status === "live");
+
+export type LiveToolId =
+  | "food-safety"
+  | "resume-reviewer"
+  | "resume-reviewer-pro"
+  | "lease-scanner"
+  | "cover-letter-reviewer"
+  | "privacy-policy-translator"
+  | "cosmetic-ingredient-scanner";
+
+export function getTool(id: string): Tool | undefined {
+  return TOOLS.find((t) => t.id === id);
+}
