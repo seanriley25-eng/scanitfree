@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { FoodSafetyClient } from "./client";
+import { ToolContent } from "@/components/ToolContent";
 
 export const metadata: Metadata = {
   title: "Free AI Food Safety Scanner — Scan Ingredient Labels by Photo or Text",
@@ -19,5 +20,10 @@ export const metadata: Metadata = {
 };
 
 export default function FoodSafetyPage() {
-  return <FoodSafetyClient />;
+  return (
+    <>
+      <FoodSafetyClient />
+      <ToolContent toolId="food-safety" />
+    </>
+  );
 }

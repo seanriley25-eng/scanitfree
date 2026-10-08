@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CoverLetterClient } from "./client";
+import { ToolContent } from "@/components/ToolContent";
 
 export const metadata: Metadata = {
   title: "Free AI Cover Letter Reviewer — Instant Feedback & ATS Score",
@@ -19,5 +20,10 @@ export const metadata: Metadata = {
 };
 
 export default function CoverLetterReviewerPage() {
-  return <CoverLetterClient />;
+  return (
+    <>
+      <CoverLetterClient />
+      <ToolContent toolId="cover-letter-reviewer" />
+    </>
+  );
 }

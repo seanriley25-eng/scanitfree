@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ResumeClient } from "./client";
+import { ToolContent } from "@/components/ToolContent";
 
 export const metadata: Metadata = {
   title: "Free AI Resume Reviewer — Upload PDF or DOCX for ATS Keyword Match",
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default function ResumeReviewerPage() {
-  return <ResumeClient />;
+  return (
+    <>
+      <ResumeClient />
+      <ToolContent toolId="resume-reviewer" />
+    </>
+  );
 }
