@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LeaseClient } from "./client";
+import { ToolContent } from "@/components/ToolContent";
 
 export const metadata: Metadata = {
   title: "Free AI Lease Scanner — Upload Lease PDF for State-Specific Red Flag Analysis",
@@ -9,5 +10,10 @@ export const metadata: Metadata = {
 };
 
 export default function LeaseScannerPage() {
-  return <LeaseClient />;
+  return (
+    <>
+      <LeaseClient />
+      <ToolContent toolId="lease-scanner" />
+    </>
+  );
 }
