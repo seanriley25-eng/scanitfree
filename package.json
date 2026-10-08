@@ -4,12 +4,16 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/check-articles.mjs",
+    "check:articles": "node scripts/check-articles.mjs",
+    "check": "node scripts/check-site.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
+    "@vercel/analytics": "^2.0.1",
     "mammoth": "^1.12.0",
     "next": "14.2.35",
     "react": "^18.3.1",

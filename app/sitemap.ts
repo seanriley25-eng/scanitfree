@@ -1,43 +1,31 @@
-import type { MetadataRoute } from 'next';
-import { ARTICLES } from '@/lib/articles';
-
-const SITE_URL = 'https://scanitfree.com';
-
-interface RouteConfig {
-  path: string;
-  changeFrequency: MetadataRoute.Sitemap[number]['changeFrequency'];
-  priority: number;
-}
-
-const staticRoutes: RouteConfig[] = [
-  { path: '/', changeFrequency: 'weekly', priority: 1.0 },
-  { path: '/tools/food-safety', changeFrequency: 'monthly', priority: 0.9 },
-  { path: '/tools/resume-reviewer', changeFrequency: 'monthly', priority: 0.9 },
-  { path: '/tools/resume-reviewer-pro', changeFrequency: 'monthly', priority: 0.9 },
-  { path: '/tools/lease-scanner', changeFrequency: 'monthly', priority: 0.9 },
-  { path: '/blog', changeFrequency: 'weekly', priority: 0.8 },
-  { path: '/about', changeFrequency: 'monthly', priority: 0.6 },
-  { path: '/contact', changeFrequency: 'yearly', priority: 0.5 },
-  { path: '/privacy', changeFrequency: 'yearly', priority: 0.3 },
-  { path: '/terms', changeFrequency: 'yearly', priority: 0.3 },
-];
+import type { MetadataRoute } from "next";
+import { ARTICLES } from "@/lib/articles";
+import { LIVE_TOOLS } from "@/lib/tools";
+import { AUTHOR, SITE } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const lastModified = new Date();
-
-  const staticEntries = staticRoutes.map((route) => ({
-    url: `${SITE_URL}${route.path}`,
-    lastModified,
-    changeFrequency: route.changeFrequency,
-    priority: route.priority,
+  const now = new Date();
+  const fixed: MetadataRoute.Sitemap = [
+    { url: `${SITE.url}/`, lastModified: now, changeFrequency: "weekly", priority: 1.0 },
+    { url: `${SITE.url}/tools`, lastModified: now, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${SITE.url}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.8 },
+    { url: `${SITE.url}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.6 },
+    { url: `${SITE.url}${AUTHOR.url}`, lastModified: now, changeFrequency: "monthly", priority: 0.5 },
+    { url: `${SITE.url}/contact`, lastModified: now, changeFrequency: "yearly", priority: 0.5 },
+    { url: `${SITE.url}/privacy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${SITE.url}/terms`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
+  ];
+  const tools: MetadataRoute.Sitemap = LIVE_TOOLS.map((t) => ({
+    url: `${SITE.url}${t.href}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.9,
   }));
-
-  const articleEntries = ARTICLES.map((article) => ({
-    url: `${SITE_URL}/blog/${article.slug}`,
-    lastModified: new Date(article.date),
-    changeFrequency: 'monthly' as const,
+  const articles: MetadataRoute.Sitemap = ARTICLES.map((a) => ({
+    url: `${SITE.url}/blog/${a.slug}`,
+    lastModified: new Date(a.reviewed),
+    changeFrequency: "monthly",
     priority: 0.7,
   }));
-
-  return [...staticEntries, ...articleEntries];
+  return [...fixed, ...tools, ...articles];
 }

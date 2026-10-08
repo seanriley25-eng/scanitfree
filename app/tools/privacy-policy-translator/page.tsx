@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PrivacyPolicyClient } from "./client";
+import { ToolContent } from "@/components/ToolContent";
 
 export const metadata: Metadata = {
   title: "Free Privacy Policy Translator — Plain English in 30 Seconds",
@@ -19,5 +20,10 @@ export const metadata: Metadata = {
 };
 
 export default function PrivacyPolicyTranslatorPage() {
-  return <PrivacyPolicyClient />;
+  return (
+    <>
+      <PrivacyPolicyClient />
+      <ToolContent toolId="privacy-policy-translator" />
+    </>
+  );
 }

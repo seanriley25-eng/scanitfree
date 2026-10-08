@@ -47,6 +47,9 @@ scanitfree/
 │   ├── privacy/page.tsx    # Privacy policy (required for AdSense)
 │   ├── terms/page.tsx      # Terms of service (required for AdSense)
 │   ├── contact/page.tsx    # Contact page
+│   ├── tools/page.tsx      # Tool index (server-rendered)
+│   ├── author/sean-riley/  # Author page (Person schema)
+│   ├── blog/               # Guides: index + [slug] (imports content/articles/<slug>.tsx by slug)
 │   ├── api/
 │   │   └── analyze/route.ts  # Claude API endpoint — handles all tools
 │   └── tools/
@@ -60,19 +63,51 @@ scanitfree/
 │   ├── Nav.tsx
 │   ├── Footer.tsx
 │   ├── AdSlot.tsx          # Placeholder → swap for real AdSense
+│   ├── ToolContent.tsx     # Guide + FAQ schema rendered under every tool
 │   └── ToolGrid.tsx        # Filterable tool card grid
+├── content/
+│   ├── articles/           # One TSX component per guide (slug = filename)
+│   └── tools/              # One TSX guide per tool: `faq` export + default component
 ├── lib/
-│   ├── tools.ts            # Central tool registry + SEO metadata
+│   ├── tools.ts            # Central tool registry + SEO metadata (LIVE_TOOLS, LiveToolId)
+│   ├── articles.ts         # Guide registry: dates, reviewed date, sources
+│   ├── site.ts             # SITE and AUTHOR constants
 │   └── openfda.ts          # OpenFDA enforcement API client (food-safety)
+├── scripts/
+│   ├── check-articles.mjs  # prebuild: every registered slug has a content file
+│   └── check-site.mjs      # post-build verifier (see Verification)
 └── .env.example
 ```
 
-## Adding Google AdSense
+## Verification
 
-1. Apply at https://adsense.google.com with your domain
-2. Once approved, replace the commented-out script tag in `app/layout.tsx`
-3. Replace `AdSlot` component placeholders with real `<ins class="adsbygoogle">` tags
-4. Key ad placements are already wired in:
+```bash
+npm run build                 # prebuild fails if an article slug has no content file
+npx next start -p 3100 &
+BASE=http://localhost:3100 npm run check
+```
+
+`scripts/check-site.mjs` confirms every tool page has at least 900 words of guide
+text and a 6-entry FAQ schema, every article resolves with Article schema and at
+least 3 sources, no page carries forbidden copy, the sitemap matches the registries,
+and every source URL is reachable (`SKIP_LINKS=1` skips the network check).
+
+## Search Console and analytics
+
+Set these in Vercel → Project → Settings → Environment Variables, then redeploy:
+
+- `NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION` — token from Search Console's HTML-tag method
+- `NEXT_PUBLIC_BING_SITE_VERIFICATION` — token from Bing Webmaster Tools' meta-tag method
+
+Then submit `https://scanitfree.com/sitemap.xml` in Search Console and request indexing for
+`/`, `/tools`, and each tool page. Enable Web Analytics in Vercel → Project → Analytics
+(the `@vercel/analytics` component is already mounted in `app/layout.tsx`).
+
+## Google AdSense
+
+1. The AdSense script and `ads.txt` are live; the account verification meta tag is in `app/layout.tsx`.
+2. `AdSlot` renders empty, sized containers. After approval, place `<ins class="adsbygoogle">` tags inside them (or rely on Auto ads).
+3. Key ad placements are already wired in:
    - Top of page (leaderboard 728x90)
    - Between content sections (leaderboard)
    - Within tool results (medium rectangle 300x250)

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ResumeProClient } from "./client";
+import { ToolContent } from "@/components/ToolContent";
 
 export const metadata: Metadata = {
   title: "Resume Reviewer Pro — Deterministic ATS Score + 90+ AI Rewrite",
@@ -19,5 +20,10 @@ export const metadata: Metadata = {
 };
 
 export default function ResumeReviewerProPage() {
-  return <ResumeProClient />;
+  return (
+    <>
+      <ResumeProClient />
+      <ToolContent toolId="resume-reviewer-pro" />
+    </>
+  );
 }

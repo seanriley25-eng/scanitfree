@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { TOOLS, CATEGORIES } from "@/lib/tools";
+import { LIVE_TOOLS, CATEGORIES } from "@/lib/tools";
+import { ARTICLES } from "@/lib/articles";
 import { AdSlot } from "@/components/AdSlot";
 import { ToolGrid } from "@/components/ToolGrid";
 
@@ -12,7 +13,7 @@ export default function Home() {
           100% FREE · NO SIGNUP · AD-SUPPORTED
         </div>
         <div className="inline-block bg-accent-dim rounded-full px-4 py-1 text-xs font-mono text-accent tracking-wide mb-5">
-          7 TOOLS · 36 ARTICLES · POWERED BY CLAUDE
+          {LIVE_TOOLS.length} TOOLS · {ARTICLES.length} GUIDES · AI ANALYSIS BY CLAUDE
         </div>
         <h1 className="font-display text-4xl md:text-6xl font-normal text-[var(--text)] leading-tight mb-4">
           AI tools that actually{" "}
@@ -97,32 +98,11 @@ export default function Home() {
       </section>
 
       {/* Tool grid (client component for filtering) */}
-      <ToolGrid tools={TOOLS.filter(t => t.status === 'live')} categories={CATEGORIES} />
+      <ToolGrid tools={LIVE_TOOLS} categories={CATEGORIES} />
 
       {/* Mid ad */}
       <div className="max-w-[900px] mx-auto px-6 mt-8">
         <AdSlot size="leaderboard" />
-      </div>
-
-      {/* AI-built callout */}
-      <div className="max-w-[900px] mx-auto px-6 mb-2">
-        <div className="flex items-center gap-3 py-3 px-4 rounded-xl bg-surface border border-border text-muted text-xs font-mono">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-accent-dim border border-accent/20 text-accent text-[11px] whitespace-nowrap">
-            ⚡ AI-built
-          </span>
-          <span>
-            This entire site — tools, content, and code — was built and maintained by AI agents powered by the{" "}
-            <a
-              href="https://anthropic.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-accent hover:underline"
-            >
-              Anthropic Claude API
-            </a>
-            .
-          </span>
-        </div>
       </div>
 
       {/* SEO content */}
@@ -158,8 +138,8 @@ export default function Home() {
           How it works
         </h2>
         <p className="text-muted text-sm leading-relaxed max-w-2xl">
-          Each tool is powered by Anthropic&apos;s Claude AI combined with real
-          government and public data sources. When you scan a food product, we
+          Each tool pairs Anthropic&apos;s Claude model with a rubric written and
+          maintained by our team, plus real government and public data sources. When you scan a food product, we
           cross-reference the FDA enforcement database, known allergen lists,
           and published safety research. When you submit a resume, our AI
           evaluates it against current hiring standards and ATS compatibility

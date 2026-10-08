@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ARTICLES } from "@/lib/articles";
+import { AUTHOR } from "@/lib/site";
 
 export const metadata: Metadata = {
   title: "Blog — ScanItFree",
@@ -12,6 +13,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Health: "bg-green-500/10 text-green-400",
   Career: "bg-blue-500/10 text-blue-400",
   Legal: "bg-purple-500/10 text-purple-400",
+  Privacy: "bg-amber-500/10 text-amber-400",
 };
 
 export default function BlogIndex() {
@@ -21,8 +23,9 @@ export default function BlogIndex() {
         Guides &amp; Articles
       </h1>
       <p className="text-muted text-sm leading-relaxed mb-10 max-w-xl">
-        Practical guides on food safety, resume writing, and tenant rights —
-        backed by real data sources and written in plain English.
+        Practical guides on food safety, cosmetic ingredients, renting and tenant
+        rights, privacy policies, resumes, and cover letters. Every guide is
+        reviewed, dated, and lists its sources.
       </p>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -42,7 +45,7 @@ export default function BlogIndex() {
                   {article.category}
                 </span>
                 <span className="text-[11px] text-muted font-mono">
-                  {article.date}
+                  {article.date} · {AUTHOR.name}
                 </span>
               </div>
               <h2 className="font-heading text-base font-semibold text-[var(--text)] mb-2 leading-snug">

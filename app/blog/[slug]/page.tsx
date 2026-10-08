@@ -2,28 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ARTICLES, getArticleBySlug, getRelatedArticles } from "@/lib/articles";
-
-// Dynamic import map for article content components
-const CONTENT_MAP: Record<string, () => Promise<{ default: React.ComponentType }>> = {
-  'lease-red-flags': () => import('@/content/articles/lease-red-flags'),
-  'beat-ats-resume-filters': () => import('@/content/articles/beat-ats-resume-filters'),
-  'fda-food-recalls-explained': () => import('@/content/articles/fda-food-recalls-explained'),
-  'security-deposit-laws': () => import('@/content/articles/security-deposit-laws'),
-  'resume-keywords': () => import('@/content/articles/resume-keywords'),
-  'what-is-bha-in-food': () => import('@/content/articles/what-is-bha-in-food'),
-  'food-allergens-label-reading': () => import('@/content/articles/food-allergens-label-reading'),
-  'food-dyes-safety': () => import('@/content/articles/food-dyes-safety'),
-  'resume-bullet-examples': () => import('@/content/articles/resume-bullet-examples'),
-  'hard-skills-vs-soft-skills': () => import('@/content/articles/hard-skills-vs-soft-skills'),
-  'get-security-deposit-back': () => import('@/content/articles/get-security-deposit-back'),
-  'joint-and-several-liability': () => import('@/content/articles/joint-and-several-liability'),
-  'natural-vs-organic-food-labels': () => import('@/content/articles/natural-vs-organic-food-labels'),
-  'how-to-read-nutrition-label': () => import('@/content/articles/how-to-read-nutrition-label'),
-  'how-long-should-resume-be': () => import('@/content/articles/how-long-should-resume-be'),
-  'how-to-write-resume-summary': () => import('@/content/articles/how-to-write-resume-summary'),
-  'can-landlord-raise-rent-mid-lease': () => import('@/content/articles/can-landlord-raise-rent-mid-lease'),
-  'landlord-wont-make-repairs': () => import('@/content/articles/landlord-wont-make-repairs'),
-};
+import { AUTHOR, SITE } from "@/lib/site";
 
 export function generateStaticParams() {
   return ARTICLES.map((article) => ({ slug: article.slug }));
@@ -37,11 +16,15 @@ export function generateMetadata({ params }: { params: { slug: string } }): Meta
     title: `${article.title} — ScanItFree`,
     description: article.description,
     keywords: article.keywords,
+    authors: [{ name: AUTHOR.name, url: `${SITE.url}${AUTHOR.url}` }],
+    alternates: { canonical: `${SITE.url}/blog/${article.slug}` },
     openGraph: {
       title: article.title,
       description: article.description,
       type: "article",
       publishedTime: article.date,
+      modifiedTime: article.reviewed,
+      authors: [`${SITE.url}${AUTHOR.url}`],
     },
   };
 }
@@ -50,14 +33,31 @@ export default async function BlogPost({ params }: { params: { slug: string } })
   const article = getArticleBySlug(params.slug);
   if (!article) notFound();
 
-  const loader = CONTENT_MAP[params.slug];
-  if (!loader) notFound();
-
-  const { default: Content } = await loader();
+  // Webpack bundles every file matching this template, so a new article only
+  // needs a lib/articles.ts entry. scripts/check-articles.mjs guards the pair.
+  const { default: Content } = (await import(
+    `@/content/articles/${article.slug}`
+  )) as { default: React.ComponentType };
   const related = getRelatedArticles(article);
+
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: article.title,
+    description: article.description,
+    datePublished: article.date,
+    dateModified: article.reviewed,
+    author: { "@type": "Person", name: AUTHOR.name, url: `${SITE.url}${AUTHOR.url}` },
+    publisher: { "@type": "Organization", name: SITE.operator },
+    mainEntityOfPage: `${SITE.url}/blog/${article.slug}`,
+  };
 
   return (
     <div className="max-w-[640px] mx-auto px-6 py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Link
         href="/blog"
         className="text-accent font-mono text-sm no-underline hover:underline mb-6 inline-block"
@@ -69,19 +69,42 @@ export default async function BlogPost({ params }: { params: { slug: string } })
         <span className="text-[10px] font-bold font-mono px-2.5 py-0.5 rounded-full uppercase tracking-wide bg-accent-dim text-accent">
           {article.category}
         </span>
-        <span className="text-[11px] text-muted font-mono">{article.date}</span>
       </div>
 
       <h1 className="font-display text-3xl md:text-4xl text-[var(--text)] mb-3 leading-tight">
         {article.title}
       </h1>
-      <p className="text-muted text-sm leading-relaxed mb-10">
+      <p className="text-muted text-sm leading-relaxed mb-4">
         {article.description}
+      </p>
+
+      <p className="text-[12px] text-muted font-mono mb-10">
+        By{" "}
+        <Link href={AUTHOR.url} className="text-accent no-underline hover:underline">
+          {AUTHOR.name}
+        </Link>
+        {" · "}Published {article.date}
+        {" · "}Last reviewed {article.reviewed}
       </p>
 
       <div className="prose-scanitfree">
         <Content />
       </div>
+
+      <section className="mt-10 border-t border-border pt-6" aria-label="Sources">
+        <h2 className="font-heading text-sm font-semibold text-muted uppercase tracking-wide mb-3">
+          Sources
+        </h2>
+        <ol className="list-decimal pl-5 space-y-1.5">
+          {article.sources.map((s) => (
+            <li key={s.url} className="text-xs text-muted">
+              <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-accent">
+                {s.title}
+              </a>
+            </li>
+          ))}
+        </ol>
+      </section>
 
       {/* CTA */}
       <div className="mt-12 bg-surface border border-border rounded-xl p-6 text-center">

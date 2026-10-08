@@ -5,7 +5,7 @@ import Link from "next/link";
 export function Footer() {
   return (
     <footer className="border-t border-border py-8 px-6 text-center text-muted text-xs font-mono">
-      <div>ScanItFree — Free AI utilities for everyday decisions</div>
+      <div>ScanItFree — Free AI utilities for everyday decisions · Farallone Media LLC</div>
       <div className="opacity-50 mt-1">
         Tools powered by Claude API · Data from FDA, CPSC, NHTSA · Not a
         substitute for professional advice

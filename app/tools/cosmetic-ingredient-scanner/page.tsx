@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CosmeticIngredientClient } from "./client";
+import { ToolContent } from "@/components/ToolContent";
 
 export const metadata: Metadata = {
   title: "Free Cosmetic Ingredient Scanner — EWG-Style Safety Scores & Pregnancy Flags",
@@ -20,5 +21,10 @@ export const metadata: Metadata = {
 };
 
 export default function CosmeticIngredientScannerPage() {
-  return <CosmeticIngredientClient />;
+  return (
+    <>
+      <CosmeticIngredientClient />
+      <ToolContent toolId="cosmetic-ingredient-scanner" />
+    </>
+  );
 }
