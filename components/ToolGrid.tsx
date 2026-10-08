@@ -51,10 +51,7 @@ export function ToolGrid({
               <p className="text-muted text-xs leading-relaxed mb-4">
                 {tool.desc}
               </p>
-              <div className="flex justify-between items-center">
-                <span className="text-[11px] text-muted font-mono opacity-60">
-                  ~{tool.searchVolume} searches
-                </span>
+              <div className="flex justify-end items-center">
                 <span className="text-xs text-accent font-mono font-semibold">
                   {tool.cta} →
                 </span>

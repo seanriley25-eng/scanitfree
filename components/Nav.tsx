@@ -13,7 +13,7 @@ export function Nav() {
       </Link>
       <div className="flex gap-5 items-center">
         <Link
-          href="/"
+          href="/tools"
           className="text-muted text-sm font-mono no-underline hover:text-[var(--text)] transition-colors"
         >
           All Tools
